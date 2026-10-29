@@ -1,0 +1,310 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* =========================================================
+   GYMIO DESIGN SYSTEM
+   Pure jet black and white. No accent colour.
+   Theme switching only changes CSS variables on <html>,
+   so no element ever needs its own colour transition.
+   ========================================================= */
+
+/* ---------- Constants (same in both themes) ---------- */
+:root {
+  --radius: 0.125rem;
+
+  --ink: oklch(0.1 0 0);
+  --paper: oklch(1 0 0);
+
+  /* Status colours: only used for tiny dots and toasts */
+  --destructive: oklch(0.6 0.23 27);
+  --success: oklch(0.62 0.16 150);
+  --warning: oklch(0.78 0.16 78);
+  --info: oklch(0.6 0 0);
+
+  /* Chart ramp: grays only */
+  --chart-1: oklch(0.1 0 0);
+  --chart-2: oklch(0.35 0 0);
+  --chart-3: oklch(0.55 0 0);
+  --chart-4: oklch(0.72 0 0);
+  --chart-5: oklch(0.86 0 0);
+
+  color-scheme: light;
+}
+
+/* ---------- LIGHT scheme (default, and inverted sections in dark mode) ---------- */
+:root,
+.dark .tone-invert {
+  --background: var(--paper);
+  --foreground: var(--ink);
+  --card: oklch(0.975 0 0);
+  --card-foreground: var(--ink);
+  --popover: var(--paper);
+  --popover-foreground: var(--ink);
+  --primary: var(--ink);
+  --primary-foreground: var(--paper);
+  --secondary: oklch(0.955 0 0);
+  --secondary-foreground: var(--ink);
+  --muted: oklch(0.955 0 0);
+  --muted-foreground: oklch(0.42 0 0);
+  --accent: oklch(0.93 0 0);
+  --accent-foreground: var(--ink);
+  --border: oklch(0 0 0 / 14%);
+  --input: oklch(0 0 0 / 22%);
+  --ring: oklch(0 0 0 / 55%);
+  --brand: var(--ink);
+  --rule: var(--ink);
+  --destructive: oklch(0.6 0.23 27);
+  --success: oklch(0.62 0.16 150);
+}
+
+/* ---------- DARK scheme (default theme, and inverted sections in light mode) ---------- */
+.dark,
+:root:not(.dark) .tone-invert {
+  --background: var(--ink);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.14 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.16 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.985 0 0);
+  --primary-foreground: var(--ink);
+  --secondary: oklch(0.19 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.17 0 0);
+  --muted-foreground: oklch(0.72 0 0);
+  --accent: oklch(0.22 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --border: oklch(1 0 0 / 16%);
+  --input: oklch(1 0 0 / 18%);
+  --ring: oklch(1 0 0 / 65%);
+  --brand: oklch(0.985 0 0);
+  --rule: oklch(0.985 0 0);
+  --destructive: oklch(0.7 0.19 22);
+  --success: oklch(0.72 0.17 150);
+}
+
+.dark {
+  color-scheme: dark;
+}
+
+/* ---------- Fonts and animations ---------- */
+@theme {
+  --font-sans: "Instrument Sans Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-display: "Big Shoulders Display Variable", Impact, "Arial Narrow Bold", sans-serif;
+  --font-heading: "Big Shoulders Display Variable", Impact, "Arial Narrow Bold", sans-serif;
+  --font-mono: "JetBrains Mono Variable", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --animate-marquee: marquee var(--duration) infinite linear;
+  --animate-marquee-vertical: marquee-vertical var(--duration) linear infinite;
+  --animate-fade-up: fade-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+
+  @keyframes marquee {
+    from { transform: translate3d(0, 0, 0); }
+    to { transform: translate3d(calc(-100% - var(--gap)), 0, 0); }
+  }
+  @keyframes marquee-vertical {
+    from { transform: translate3d(0, 0, 0); }
+    to { transform: translate3d(0, calc(-100% - var(--gap)), 0); }
+  }
+  @keyframes fade-up {
+    from { opacity: 0; transform: translate3d(0, 20px, 0); }
+    to { opacity: 1; transform: none; }
+  }
+}
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 1px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 2px);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-brand: var(--brand);
+  --color-rule: var(--rule);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
+
+  --color-ink: var(--ink);
+  --color-paper: var(--paper);
+
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+}
+
+/* =========================================================
+   UTILITIES
+   ========================================================= */
+
+/* Small mono caption, for labels and numbers */
+@utility label-mono {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+/* Hollow letters */
+@utility text-outline {
+  color: transparent;
+  -webkit-text-stroke: 1.5px var(--foreground);
+}
+
+/* Hard offset shadows instead of soft blurry ones */
+@utility shadow-hard {
+  box-shadow: 5px 5px 0 0 var(--rule);
+}
+@utility shadow-hard-sm {
+  box-shadow: 3px 3px 0 0 var(--rule);
+}
+
+/* Clipped top-right corner (ticket / tag shape) */
+@utility cut-corner {
+  clip-path: polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 0 100%);
+}
+
+/* Diagonal hatch texture. It takes the current text colour. */
+@utility bg-stripes {
+  background-image: repeating-linear-gradient(135deg, currentColor 0 1px, transparent 1px 10px);
+}
+
+/* Lets the browser skip rendering off-screen sections (big win on phones) */
+@utility cv-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 720px;
+}
+
+/* =========================================================
+   BASE
+   ========================================================= */
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    background: var(--background);
+
+    /* Slim scrollbar. This property is inherited, so it only needs to be set here. */
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in oklch, var(--foreground) 35%, transparent) transparent;
+  }
+
+  body {
+    @apply bg-background font-sans text-foreground antialiased;
+    overflow-x: clip;
+  }
+
+  /* Headlines: condensed, uppercase, tight */
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+    font-weight: 800;
+    letter-spacing: 0.005em;
+    text-wrap: balance;
+  }
+  h1,
+  h2 {
+    text-transform: uppercase;
+    line-height: 0.92;
+  }
+  h3,
+  h4 {
+    line-height: 1.05;
+  }
+
+  a,
+  button,
+  [role="button"] {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--foreground);
+    outline-offset: 3px;
+  }
+
+  /* Selected text flips the colours */
+  ::selection {
+    background: var(--foreground);
+    color: var(--background);
+  }
+
+  /* Inverted sections repaint themselves from the scoped variables above */
+  .tone-invert {
+    background-color: var(--background);
+    color: var(--foreground);
+  }
+}
+
+/* =========================================================
+   THEME SWITCHING
+   1) Browsers with View Transitions: one GPU crossfade of the
+      whole page. No per-element transitions at all.
+   2) Everything else: ThemeProvider adds .theme-switching for
+      a single frame so the swap is instant and never half-animated.
+   ========================================================= */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 0.28s;
+  animation-timing-function: ease;
+  mix-blend-mode: normal;
+}
+
+.theme-switching,
+.theme-switching *,
+.theme-switching *::before,
+.theme-switching *::after {
+  transition: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

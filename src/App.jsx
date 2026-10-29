@@ -1,0 +1,19 @@
+import { RouterProvider } from "react-router";
+import { Toaster } from "sonner";
+import { ThemeProvider } from "@/contexts/ThemeProvider";
+import { useTheme } from "@/hooks/useTheme";
+import { router } from "@/routes/router";
+
+function AppToaster() {
+  const { resolvedTheme } = useTheme();
+  return <Toaster theme={resolvedTheme} position="top-right" richColors closeButton />;
+}
+
+export default function App() {
+  return (
+    <ThemeProvider defaultTheme="dark">
+      <RouterProvider router={router} />
+      <AppToaster />
+    </ThemeProvider>
+  );
+}

@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
+
+    <!-- Application -->
+    <meta name="application-name" content="Gymio" />
+    <meta name="author" content="Gymio" />
+
+    <title>Gymio — Your Gym. Your Members. One Powerful Platform.</title>
+
+    <meta
+      name="description"
+      content="Run your gym with Gymio. Manage members, membership renewals, UPI and cash payment records, digital receipts, access approvals, announcements, and analytics. Get started free with all features included."
+    />
+
+    <meta
+      name="keywords"
+      content="Gymio, gym management system, gym management software, member management, membership renewals, UPI payment tracking, gym payment records, digital receipts, gym analytics"
+    />
+
+    <meta name="robots" content="index, follow" />
+
+    <!-- Jet black and white. The inline script below updates theme-color when the theme changes. -->
+    <meta name="theme-color" content="#030303" />
+    <meta name="color-scheme" content="dark light" />
+
+    <!-- Favicon: served from the public folder (public/favicon.svg). Change the file name/type here if yours differs. -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Gymio" />
+    <meta
+      property="og:title"
+      content="Gymio — Your Gym. Your Members. One Powerful Platform."
+    />
+    <meta
+      property="og:description"
+      content="Less admin. More time for your gym. Manage members, renewals, payments, receipts, and everyday operations in one place. Free, with all features included."
+    />
+    <meta property="og:locale" content="en_IN" />
+
+    <!-- Social sharing -->
+    <meta name="twitter:card" content="summary" />
+    <meta
+      name="twitter:title"
+      content="Gymio — Gym Management, Simplified"
+    />
+    <meta
+      name="twitter:description"
+      content="Manage members, membership renewals, UPI and cash payment records, digital receipts, and gym updates. Start free with all features included."
+    />
+
+    <!-- Mobile browser settings -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
+    <meta name="apple-mobile-web-app-title" content="Gymio" />
+    <meta name="format-detection" content="telephone=no" />
+
+    <!--
+      First-paint colours. They match --ink and --paper in src/index.css,
+      so there is no flash before the stylesheet loads.
+    -->
+    <style>
+      html {
+        min-width: 320px;
+        background: #030303;
+        color: #fafafa;
+        color-scheme: dark;
+      }
+
+      html:not(.dark) {
+        background: #ffffff;
+        color: #030303;
+        color-scheme: light;
+      }
+
+      body {
+        margin: 0;
+        min-width: 320px;
+        min-height: 100vh;
+        min-height: 100svh;
+        background: inherit;
+      }
+
+      #root {
+        min-height: 100vh;
+        min-height: 100svh;
+      }
+
+      .noscript-message {
+        box-sizing: border-box;
+        width: min(100% - 2rem, 32rem);
+        margin: 15vh auto;
+        padding: 2rem;
+        border: 1px solid #fafafa;
+        background: #030303;
+        color: #fafafa;
+        font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+        line-height: 1.7;
+        text-align: left;
+        box-shadow: 6px 6px 0 0 #fafafa;
+      }
+
+      .noscript-message h1 {
+        margin: 0 0 0.75rem;
+        font-size: 1.75rem;
+        letter-spacing: -0.02em;
+        text-transform: uppercase;
+      }
+
+      .noscript-message p {
+        margin: 0;
+        color: #a3a3a3;
+      }
+
+      html:not(.dark) .noscript-message {
+        border-color: #030303;
+        background: #ffffff;
+        color: #030303;
+        box-shadow: 6px 6px 0 0 #030303;
+      }
+
+      html:not(.dark) .noscript-message p {
+        color: #525252;
+      }
+    </style>
+
+    <!--
+      Apply the saved theme before React mounts.
+      "gymio-theme" must match STORAGE_KEY in ThemeProvider.jsx.
+      Default theme: dark.
+    -->
+    <script>
+      (function () {
+        var root = document.documentElement;
+        var dark = true;
+
+        try {
+          var savedTheme = window.localStorage.getItem("gymio-theme");
+
+          if (savedTheme === "light") {
+            dark = false;
+          } else if (savedTheme === "system") {
+            dark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+          }
+        } catch (error) {
+          // Keep the default dark theme if storage is unavailable.
+        }
+
+        root.classList.toggle("dark", dark);
+        root.style.colorScheme = dark ? "dark" : "light";
+
+        var themeColor = document.querySelector('meta[name="theme-color"]');
+
+        if (themeColor) {
+          themeColor.setAttribute("content", dark ? "#030303" : "#ffffff");
+        }
+      })();
+    </script>
+  </head>
+
+  <body>
+    <noscript>
+      <div class="noscript-message">
+        <h1>Welcome to Gymio</h1>
+        <p>
+          Please enable JavaScript in your browser to explore Gymio
+          and manage your gym.
+        </p>
+      </div>
+    </noscript>
+
+    <div id="root"></div>
+
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
