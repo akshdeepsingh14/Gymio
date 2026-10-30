@@ -1,0 +1,137 @@
+import { formatDate } from "@/lib/dates";
+import { formatMoney } from "@/lib/format";
+import { receiptPeriod, receiptTaxLine, VERIFICATION_NOTE } from "@/lib/receipt";
+import { cn } from "@/lib/utils";
+
+function Row({ label, compact, children }) {
+  return (
+    <div
+      className={cn(
+        "grid grid-cols-[6.5rem_1fr] gap-3 border-b border-neutral-200 text-sm last:border-b-0 sm:grid-cols-[8rem_1fr]",
+        compact ? "py-1.5" : "py-2.5",
+      )}
+    >
+      <dt className="label-mono pt-0.5 text-neutral-500">{label}</dt>
+      <dd className="min-w-0 break-words font-medium">{children}</dd>
+    </div>
+  );
+}
+
+export function ReceiptPaper({ receipt }) {
+  const { voided } = receipt;
+  const compact = receipt.layout === "compact";
+  const taxLine = receiptTaxLine(receipt);
+  const paidVia = [receipt.methodLabel, receipt.reference].filter(Boolean);
+
+  return (
+    <article
+      aria-label={`Receipt ${receipt.receiptNo}`}
+      className={cn(
+        "receipt-paper mx-auto w-full max-w-[640px] border border-neutral-300 bg-white text-neutral-900",
+        compact ? "p-4 sm:p-6" : "p-5 sm:p-8",
+      )}
+    >
+      <header className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <p
+            className={cn(
+              "font-display font-extrabold uppercase leading-none",
+              compact ? "text-2xl sm:text-3xl" : "text-3xl sm:text-4xl",
+            )}
+          >
+            {receipt.gymName}
+          </p>
+          {compact ? (
+            <p className="mt-1.5 text-xs text-neutral-600">
+              {[receipt.address, receipt.phone, taxLine].filter(Boolean).join(" · ")}
+            </p>
+          ) : (
+            <>
+              {receipt.address && <p className="mt-2 text-sm text-neutral-600">{receipt.address}</p>}
+              {receipt.phone && <p className="text-sm text-neutral-600">{receipt.phone}</p>}
+              {taxLine && <p className="text-sm text-neutral-600">{taxLine}</p>}
+            </>
+          )}
+        </div>
+        <div className="shrink-0 text-right">
+          <p className="label-mono text-neutral-500">Receipt</p>
+          <p className="mt-1 font-mono text-base font-bold sm:text-lg">{receipt.receiptNo}</p>
+        </div>
+      </header>
+
+      <div className={cn("border-t-2 border-neutral-900", compact ? "mt-4" : "mt-5")} />
+
+      {voided && (
+        <div role="note" className="mt-5 border-2 border-red-700 p-3 text-sm text-red-700">
+          <p className="label-mono">Voided</p>
+          <p className="mt-1">
+            This payment was cancelled and no longer counts toward the membership or any totals.
+            {receipt.voidReason ? ` Reason: ${receipt.voidReason}` : ""}
+          </p>
+        </div>
+      )}
+
+      <dl className={compact ? "mt-2" : "mt-4"}>
+        {compact ? (
+          <>
+            <Row compact label="Member">
+              {receipt.memberName} <span className="font-mono text-neutral-600">({receipt.memberId})</span>
+            </Row>
+            <Row compact label="Plan">
+              {receipt.planName}
+            </Row>
+            <Row compact label="Period">
+              {receiptPeriod(receipt)}
+            </Row>
+            <Row compact label="Paid">
+              {[formatDate(receipt.paidOn), ...paidVia].join(" · ")}
+            </Row>
+            {receipt.note && (
+              <Row compact label="Note">
+                {receipt.note}
+              </Row>
+            )}
+          </>
+        ) : (
+          <>
+            <Row label="Member">{receipt.memberName}</Row>
+            <Row label="Member ID">
+              <span className="font-mono">{receipt.memberId}</span>
+            </Row>
+            <Row label="Plan">{receipt.planName}</Row>
+            <Row label="Period">{receiptPeriod(receipt)}</Row>
+            <Row label="Paid on">{formatDate(receipt.paidOn)}</Row>
+            <Row label="Method">{receipt.methodLabel}</Row>
+            {receipt.reference && (
+              <Row label="Reference">
+                <span className="font-mono">{receipt.reference}</span>
+              </Row>
+            )}
+            {receipt.note && <Row label="Note">{receipt.note}</Row>}
+          </>
+        )}
+      </dl>
+
+      <div
+        className={cn(
+          "flex items-end justify-between gap-4 border-y-2 border-neutral-900",
+          compact ? "mt-3 py-3" : "mt-5 py-4",
+        )}
+      >
+        <p className="label-mono text-neutral-600">Amount paid</p>
+        <p
+          className={cn(
+            "font-mono font-bold",
+            compact ? "text-2xl sm:text-3xl" : "text-3xl sm:text-4xl",
+            voided && "text-neutral-400 line-through",
+          )}
+        >
+          {formatMoney(receipt.amount, receipt.currency)}
+        </p>
+      </div>
+
+      {!voided && <p className="mt-4 text-xs leading-relaxed text-neutral-600">{VERIFICATION_NOTE}</p>}
+      <p className={cn("label-mono text-neutral-400", compact ? "mt-4" : "mt-6")}>Generated by Gymio</p>
+    </article>
+  );
+}

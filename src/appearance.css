@@ -1,0 +1,28 @@
+/* =========================================================
+   APPEARANCE PREFERENCES
+   Settings > Appearance writes data-radius, data-density and
+   data-cards onto <html> (see src/lib/appearance.js).
+   Loaded after index.css so these rules win.
+   ========================================================= */
+
+/* Corners: every rounded-* utility is built from --radius */
+:root[data-radius="soft"] {
+  --radius: 0.375rem;
+}
+:root[data-radius="round"] {
+  --radius: 0.875rem;
+}
+
+/* Spacing: cards and the owner page padding */
+:root[data-density="compact"] [data-slot="card"]:not([data-size="sm"]) {
+  --card-spacing: 0.875rem;
+}
+:root[data-density="compact"] #owner-content {
+  padding-block: 1rem;
+}
+
+/* Cards: a tint instead of a border */
+:root[data-cards="filled"] [data-slot="card"] {
+  border-color: transparent;
+  background-color: var(--secondary);
+}

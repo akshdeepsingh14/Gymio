@@ -116,9 +116,23 @@ export function ThemeProvider({ children, defaultTheme = "dark" }) {
     runThemeChange(() => flushSync(() => setThemeState(nextTheme)));
   }, []);
 
+  // A default that is applied but never saved. The member portal uses it for the gym's
+  // default theme. Once this device has saved a choice, that choice always wins.
+  const setFallbackTheme = useCallback(
+    (nextTheme) => {
+      try {
+        if (localStorage.getItem(STORAGE_KEY)) return;
+      } catch {
+        // Storage blocked: nothing can be saved, so the fallback applies.
+      }
+      setThemeState(VALID_THEMES.includes(nextTheme) ? nextTheme : defaultTheme);
+    },
+    [defaultTheme]
+  );
+
   const value = useMemo(
-    () => ({ theme, resolvedTheme, setTheme }),
-    [theme, resolvedTheme, setTheme]
+    () => ({ theme, resolvedTheme, setTheme, setFallbackTheme }),
+    [theme, resolvedTheme, setTheme, setFallbackTheme]
   );
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;

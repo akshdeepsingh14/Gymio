@@ -308,3 +308,36 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+
+/* =========================================================
+   PRINTING (receipts)
+   Everything on the page is hidden except the receipt copy
+   that ReceiptSheet puts directly inside <body>.
+   ========================================================= */
+@media print {
+  @page {
+    margin: 14mm;
+  }
+
+  html,
+  body {
+    background: #fff !important;
+  }
+
+  body > *:not(.receipt-print-root) {
+    display: none !important;
+  }
+
+  .receipt-print-root {
+    display: block !important;
+  }
+
+  .receipt-print-root .receipt-paper {
+    max-width: none;
+    padding: 0;
+    border: 0;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}

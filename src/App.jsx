@@ -1,5 +1,6 @@
 import { RouterProvider } from "react-router";
 import { Toaster } from "sonner";
+import { AuthProvider } from "@/contexts/AuthProvider";
 import { ThemeProvider } from "@/contexts/ThemeProvider";
 import { useTheme } from "@/hooks/useTheme";
 import { router } from "@/routes/router";
@@ -12,7 +13,9 @@ function AppToaster() {
 export default function App() {
   return (
     <ThemeProvider defaultTheme="dark">
-      <RouterProvider router={router} />
+      <AuthProvider>
+        <RouterProvider router={router} />
+      </AuthProvider>
       <AppToaster />
     </ThemeProvider>
   );

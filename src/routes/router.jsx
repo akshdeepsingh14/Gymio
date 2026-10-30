@@ -2,10 +2,22 @@ import { lazy, Suspense } from "react";
 import { createBrowserRouter } from "react-router";
 
 import { Skeleton } from "@/components/ui/skeleton";
+import GuestRoute from "@/routes/GuestRoute";
+import ProtectedRoute from "@/routes/ProtectedRoute";
+import { ownerRoute } from "@/routes/ownerRoutes";
 
 const LandingPage = lazy(() => import("@/pages/public/LandingPage"));
 const ComingSoonPage = lazy(() => import("@/pages/ComingSoonPage"));
 const NotFoundPage = lazy(() => import("@/pages/NotFoundPage"));
+
+const SignInPage = lazy(() => import("@/pages/auth/SignInPage"));
+const SignUpPage = lazy(() => import("@/pages/auth/SignUpPage"));
+const ForgotPasswordPage = lazy(() => import("@/pages/auth/ForgotPasswordPage"));
+const ResetPasswordPage = lazy(() => import("@/pages/auth/ResetPasswordPage"));
+const OnboardingPage = lazy(() => import("@/pages/auth/OnboardingPage"));
+
+const MemberEntryPage = lazy(() => import("@/pages/member/MemberEntryPage"));
+const MemberHomePage = lazy(() => import("@/pages/member/MemberHomePage"));
 
 function PageLoader() {
   return (
@@ -34,36 +46,28 @@ export const router = createBrowserRouter([
     path: "/",
     element: loadPage(<LandingPage />),
   },
+
+  // Public, but signed-in owners are redirected away
   {
-    path: "/sign-in",
-    element: loadPage(
-      <ComingSoonPage
-        title="Owner sign in"
-        phase="Phase 3"
-        description="The gym owner sign-in screen is built in the next phase."
-      />
-    ),
+    element: <GuestRoute />,
+    children: [
+      { path: "/sign-in", element: loadPage(<SignInPage />) },
+      { path: "/sign-up", element: loadPage(<SignUpPage />) },
+      { path: "/forgot-password", element: loadPage(<ForgotPasswordPage />) },
+      { path: "/reset-password", element: loadPage(<ResetPasswordPage />) },
+    ],
   },
+
+  // Owner area: needs a session
   {
-    path: "/sign-up",
-    element: loadPage(
-      <ComingSoonPage
-        title="Create your gym"
-        phase="Phase 3"
-        description="Registration and gym onboarding are built in the next phase."
-      />
-    ),
+    element: <ProtectedRoute />,
+    children: [{ path: "/onboarding", element: loadPage(<OnboardingPage />) }, ownerRoute],
   },
-  {
-    path: "/member",
-    element: loadPage(
-      <ComingSoonPage
-        title="Member portal"
-        phase="Phase 7"
-        description="Members will sign in here with their gym username and private access code."
-      />
-    ),
-  },
+
+  // Member portal: its own sign-in, separate from the owner's
+  { path: "/member", element: loadPage(<MemberEntryPage />) },
+  { path: "/member/home", element: loadPage(<MemberHomePage />) },
+
   {
     path: "/privacy",
     element: loadPage(
@@ -71,7 +75,7 @@ export const router = createBrowserRouter([
         title="Privacy policy"
         phase="Phase 13"
         description="The privacy policy will be written before Gymio handles real member data."
-      />
+      />,
     ),
   },
   {
@@ -81,7 +85,7 @@ export const router = createBrowserRouter([
         title="Terms of service"
         phase="Phase 13"
         description="Terms of service will be published before public launch."
-      />
+      />,
     ),
   },
   {

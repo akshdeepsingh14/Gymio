@@ -1,11 +1,9 @@
 import { Navigate, Outlet, useLocation } from "react-router";
 
-// TODO (auth phase): create this context, then uncomment the import and the line using it.
-// import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function ProtectedRoute() {
-  // const { user } = useAuth();
-  const user = null; // placeholder until AuthContext exists
+  const { user } = useAuth();
   const location = useLocation();
 
   if (!user) {
@@ -14,6 +12,10 @@ export default function ProtectedRoute() {
 
   if (!user.onboardingComplete && location.pathname !== "/onboarding") {
     return <Navigate to="/onboarding" replace />;
+  }
+
+  if (user.onboardingComplete && location.pathname === "/onboarding") {
+    return <Navigate to="/app" replace />;
   }
 
   return <Outlet />;
