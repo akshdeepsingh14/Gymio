@@ -3,6 +3,7 @@ import { Ban, Ellipsis, History, Pencil, ReceiptText } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { usePermissions } from "@/hooks/usePermissions";
 import { isCounted } from "@/lib/payments";
 import { cn } from "@/lib/utils";
 
@@ -24,6 +25,9 @@ function MenuItem({ icon: Icon, children, onClick, danger = false }) {
 
 export function PaymentRowMenu({ payment, onReceipt, onHistory, onAmend, onVoid }) {
   const [open, setOpen] = useState(false);
+  const { can } = usePermissions();
+  const canAdjust = can("payments.adjust");
+
   const run = (action) => () => {
     setOpen(false);
     action(payment);
@@ -43,7 +47,7 @@ export function PaymentRowMenu({ payment, onReceipt, onHistory, onAmend, onVoid 
         <MenuItem icon={History} onClick={run(onHistory)}>
           View history
         </MenuItem>
-        {isCounted(payment) && (
+        {canAdjust && isCounted(payment) && (
           <>
             <MenuItem icon={Pencil} onClick={run(onAmend)}>
               Edit reference / note

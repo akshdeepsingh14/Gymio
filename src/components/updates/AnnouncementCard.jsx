@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { formatDate } from "@/lib/dates";
 import { isArchived } from "@/lib/updates";
 import { cn } from "@/lib/utils";
+import { describeActor } from "@/lib/attribution";
 
 export function AnnouncementCard({ post, busy, onEdit, onToggleArchive, onDelete }) {
   const archived = isArchived(post);
@@ -16,6 +17,12 @@ export function AnnouncementCard({ post, busy, onEdit, onToggleArchive, onDelete
         <div className="min-w-0">
           <p className="label-mono text-muted-foreground">{formatDate(post.publishedOn)}</p>
           <h3 className="mt-1 break-words font-semibold">{post.title}</h3>
+          {post.createdBy?.name && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              Posted by {describeActor(post.createdBy)}
+              {post.updatedBy?.name ? ` · Last changed by ${post.updatedBy.name}` : ""}
+            </p>
+          )}
         </div>
         <div className="flex flex-wrap gap-2">
           {archived && <Badge variant="secondary">Archived</Badge>}

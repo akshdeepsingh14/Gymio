@@ -50,7 +50,7 @@ export function AuditLogCard({ entries, currency }) {
           <EmptyState
             icon={ScrollText}
             title="Nothing here yet"
-            text="Payments, access decisions, staff changes and exports appear here as they happen."
+            text="Payments, access decisions, staff and settings changes, and exports appear here as they happen."
           />
         ) : (
           <>

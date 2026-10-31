@@ -28,7 +28,7 @@ function AmendForm({ payment, currency, onDone }) {
     formState: { errors, isSubmitting, isDirty },
   } = useForm({
     resolver: zodResolver(amendPaymentSchema),
-    defaultValues: { reference: payment.reference ?? "", note: payment.note ?? "" },
+    defaultValues: { reference: payment.reference ?? "", note: payment.note ?? "", reason: "" },
   });
 
   const onSubmit = async (values) => {
@@ -73,6 +73,12 @@ function AmendForm({ payment, currency, onDone }) {
           />
         )}
         <TextAreaField label="Note" rows={3} error={errors.note?.message} {...register("note")} />
+        <TextAreaField
+          label="Reason for the change"
+          rows={2}
+          error={errors.reason?.message}
+          {...register("reason")}
+        />
       </div>
 
       <SheetFooter className="mt-0 flex-row justify-end gap-2 border-t border-border p-5">

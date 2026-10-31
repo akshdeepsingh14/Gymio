@@ -1,3 +1,4 @@
+import { PermissionHistoryCard } from "@/components/settings/PermissionHistoryCard";
 import { RolePermissionsCard } from "@/components/settings/RolePermissionsCard";
 import { StaffTeamCard } from "@/components/settings/StaffTeamCard";
 import { useDb } from "@/hooks/useDb";
@@ -12,6 +13,7 @@ export default function StaffSettingsPage() {
       <div className="space-y-6">
         <StaffTeamCard staff={db.staff} />
         <RolePermissionsCard />
+        <PermissionHistoryCard />
       </div>
     </>
   );

@@ -1,8 +1,10 @@
+import { ManualEntryTag } from "@/components/payments/ManualEntryTag";
 import { PaymentRowMenu } from "@/components/payments/PaymentRowMenu";
 import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/dates";
 import { formatMoney } from "@/lib/format";
 import { isCounted } from "@/lib/payments";
+import { formatDateTime } from "@/lib/security";
 import { cn } from "@/lib/utils";
 
 function StatusBadge({ payment }) {
@@ -29,9 +31,47 @@ function Amount({ payment, currency, className }) {
 
 const methodLine = (payment) => [payment.methodLabel, payment.reference].filter(Boolean).join(" · ");
 
-function VoidReason({ payment }) {
-  if (isCounted(payment) || !payment.voidReason) return null;
-  return <p className="mt-1.5 max-w-56 break-words text-xs text-muted-foreground">Reason: {payment.voidReason}</p>;
+/** Who recorded it, and when. Sample payments from before staff accounts have neither, so nothing is shown. */
+function RecordedBy({ payment }) {
+  if (!payment.recordedBy?.name && !payment.createdAt) return null;
+  return (
+    <>
+      {payment.recordedBy?.name && <p className="label-mono mt-1 text-muted-foreground">by {payment.recordedBy.name}</p>}
+      {payment.createdAt && <p className="mt-0.5 text-xs text-muted-foreground">{formatDateTime(payment.createdAt)}</p>}
+    </>
+  );
+}
+
+/** What happened after it was recorded: a void (with reason and who) or an edit (who, when, why). */
+function Adjustment({ payment }) {
+  if (!isCounted(payment)) {
+    return (
+      <>
+        {payment.voidReason && (
+          <p className="mt-1.5 max-w-56 break-words text-xs text-muted-foreground">Reason: {payment.voidReason}</p>
+        )}
+        {payment.voidedBy?.name && (
+          <p className="mt-1 text-xs text-muted-foreground">
+            Voided by {payment.voidedBy.name}
+            {payment.voidedAt ? ` · ${formatDateTime(payment.voidedAt)}` : ""}
+          </p>
+        )}
+      </>
+    );
+  }
+  if (payment.amendedAt && payment.updatedBy?.name) {
+    return (
+      <>
+        <p className="mt-1.5 text-xs text-muted-foreground">
+          Edited by {payment.updatedBy.name} · {formatDateTime(payment.amendedAt)}
+        </p>
+        {payment.adjustmentReason && (
+          <p className="mt-1 max-w-56 break-words text-xs text-muted-foreground">Reason: {payment.adjustmentReason}</p>
+        )}
+      </>
+    );
+  }
+  return null;
 }
 
 export function PaymentsTable({ rows, currency, actions }) {
@@ -68,9 +108,13 @@ export function PaymentsTable({ rows, currency, actions }) {
                     {[row.memberId, row.planName].filter(Boolean).join(" · ")}
                   </p>
                 </td>
-                <td className="whitespace-nowrap px-4 py-3">{formatDate(row.date)}</td>
+                <td className="whitespace-nowrap px-4 py-3">
+                  <p>{formatDate(row.date)}</p>
+                  <RecordedBy payment={row} />
+                </td>
                 <td className="max-w-48 px-4 py-3">
                   <p className="break-words">{methodLine(row)}</p>
+                  <ManualEntryTag method={row.method} className="mt-1" />
                   {row.note && <p className="mt-1 break-words text-xs text-muted-foreground">{row.note}</p>}
                 </td>
                 <td className="whitespace-nowrap px-4 py-3 text-right">
@@ -78,7 +122,7 @@ export function PaymentsTable({ rows, currency, actions }) {
                 </td>
                 <td className="px-4 py-3">
                   <StatusBadge payment={row} />
-                  <VoidReason payment={row} />
+                  <Adjustment payment={row} />
                 </td>
                 <td className="px-2 py-2 text-right">
                   <PaymentRowMenu payment={row} {...actions} />
@@ -106,10 +150,12 @@ export function PaymentsTable({ rows, currency, actions }) {
             <p className="mt-3 break-words text-sm text-muted-foreground">
               {formatDate(row.date)} · {methodLine(row)}
             </p>
+            <ManualEntryTag method={row.method} className="mt-1" />
             {row.note && <p className="mt-1 break-words text-xs text-muted-foreground">{row.note}</p>}
+            <RecordedBy payment={row} />
             <div className="mt-3">
               <StatusBadge payment={row} />
-              <VoidReason payment={row} />
+              <Adjustment payment={row} />
             </div>
           </li>
         ))}

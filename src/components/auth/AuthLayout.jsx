@@ -3,13 +3,13 @@ import { ThemeToggle } from "@/components/common/ThemeToggle";
 import { Hex } from "@/components/ui/hex";
 import { Ruler } from "@/components/ui/ruler";
 
-const points = [
+const ownerPoints = [
   { n: "01", title: "Every member, one record", text: "Plans, expiry dates and payment history in one place." },
   { n: "02", title: "Renewals without chasing", text: "See who expires this week and record the renewal in seconds." },
   { n: "03", title: "Receipts that match the books", text: "Every payment produces a numbered receipt." },
 ];
 
-function AuthAside() {
+function AuthAside({ points }) {
   return (
     <aside className="tone-invert relative hidden flex-col justify-between overflow-hidden p-12 lg:flex">
       <Ruler />
@@ -48,7 +48,12 @@ function AuthAside() {
   );
 }
 
-export function AuthLayout({ title, description, children, footer }) {
+/**
+ * Shared frame for the owner and staff sign-in screens.
+ * `eyebrow` is the small label above the title (for example "Staff portal").
+ * `points` replaces the three talking points in the side panel.
+ */
+export function AuthLayout({ title, description, children, footer, eyebrow, points = ownerPoints }) {
   return (
     <div className="grid min-h-svh lg:grid-cols-2">
       {/* React 19 hoists this into <head> */}
@@ -63,6 +68,7 @@ export function AuthLayout({ title, description, children, footer }) {
 
         <main className="flex flex-1 items-center py-10">
           <div className="mx-auto w-full max-w-md animate-fade-up">
+            {eyebrow && <p className="label-mono mb-3 text-muted-foreground">{eyebrow}</p>}
             <h1 className="text-[clamp(2.75rem,9vw,4.25rem)] font-extrabold">{title}</h1>
             {description && (
               <p className="mt-3 text-base leading-relaxed text-muted-foreground">{description}</p>
@@ -77,7 +83,7 @@ export function AuthLayout({ title, description, children, footer }) {
         </main>
       </div>
 
-      <AuthAside />
+      <AuthAside points={points} />
     </div>
   );
 }

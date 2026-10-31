@@ -53,4 +53,9 @@ export const voidPaymentSchema = z.object({
 export const amendPaymentSchema = z.object({
   reference: z.string().trim().max(40, "Keep it under 40 characters."),
   note: z.string().trim().max(200, "Keep the note under 200 characters."),
+  reason: z
+    .string()
+    .trim()
+    .min(5, "Give a reason of at least 5 characters.")
+    .max(200, "Keep the reason under 200 characters."),
 });

@@ -137,7 +137,10 @@ export function buildFullExport(db, user) {
       accessRequests: db.accessRequests,
       announcements: db.announcements,
       photos: db.photos.map(({ id, caption, visibility, addedOn }) => ({ id, caption, visibility, addedOn })),
-      staff: db.staff,
+      staff: db.staff.map(({ invite, ...person }) => ({
+        ...person,
+        invite: invite && { state: invite.state, sentAt: invite.sentAt, expiresAt: invite.expiresAt, sendCount: invite.sendCount },
+      })),
       auditLog: db.auditLog,
     },
     null,

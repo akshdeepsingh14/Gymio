@@ -1,9 +1,11 @@
+
 // Plan actions. Same pattern as memberService: in the backend phase only the
 // bodies of these functions change to API calls.
 
 import { benefitsFromText, durationFromForm } from "@/lib/plans";
 import { getDb, updateDb } from "@/services/mockDb";
 import { ServiceError } from "@/services/memberService";
+import { assertCan } from "@/services/actor";
 
 const wait = (ms = 350) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -24,6 +26,7 @@ function toPlanFields(input) {
 }
 
 export async function createPlan(input) {
+  assertCan("plans.manage", "Your role cannot manage plans.");
   await wait();
   assertUniqueName(getDb(), input.name);
 
@@ -40,6 +43,7 @@ export async function createPlan(input) {
 
 /** Changes apply to future sign-ups and renewals only. Past payments keep their own amount. */
 export async function updatePlan(id, input) {
+  assertCan("plans.manage", "Your role cannot manage plans.");
   await wait();
   const db = getDb();
   if (!db.plans.some((plan) => plan.id === id)) throw new ServiceError("Plan not found.");
@@ -54,6 +58,7 @@ export async function updatePlan(id, input) {
 
 /** status: "active" | "archived". Archived plans cannot be given to members, and nobody is deleted. */
 export async function setPlanStatus(id, status) {
+  assertCan("plans.manage", "Your role cannot manage plans.");
   await wait(250);
   if (!["active", "archived"].includes(status)) throw new ServiceError("Unknown plan status.");
   if (!getDb().plans.some((plan) => plan.id === id)) throw new ServiceError("Plan not found.");

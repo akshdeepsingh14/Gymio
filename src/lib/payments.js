@@ -87,3 +87,13 @@ export function checkPaymentRules({ method, reference, amount, planPrice, note }
   }
   return null;
 }
+
+
+// ---- Wording for manually entered payments ----
+// Gymio never checks UPI or cash with a bank. Every screen that shows a payment uses these.
+
+export const MANUAL_ENTRY_TEXT = "Entered by hand · not bank-verified";
+
+export const MANUAL_ENTRY_NOTE =
+  "Payments are entered by hand by the gym team. Gymio does not verify UPI or cash payments with a bank or payment provider.";
+  

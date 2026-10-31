@@ -1,8 +1,10 @@
 import { useState } from "react";
-import { Ellipsis, Pencil, Play, RotateCcw, Send, Trash2, UserCheck, UserX } from "lucide-react";
+import { Ellipsis, Eye } from "lucide-react";
 
+import { STAFF_ACTION_META } from "@/components/settings/staffActions";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { availableActions } from "@/lib/staff";
 import { cn } from "@/lib/utils";
 
 function MenuItem({ icon: Icon, children, onClick, danger = false }) {
@@ -21,11 +23,17 @@ function MenuItem({ icon: Icon, children, onClick, danger = false }) {
   );
 }
 
-export function StaffRowMenu({ member, onEdit, onResend, onAccept, onSuspend, onReactivate, onRemove }) {
+/**
+ * `onView(member)` opens the details. `onAction(actionId, member)` handles everything else.
+ * The actions listed come from availableActions(), so the menu only offers what is allowed.
+ */
+export function StaffRowMenu({ member, onView, onAction }) {
   const [open, setOpen] = useState(false);
-  const run = (action) => () => {
+  const actions = availableActions(member);
+
+  const run = (callback) => () => {
     setOpen(false);
-    action(member);
+    callback();
   };
 
   return (
@@ -36,34 +44,18 @@ export function StaffRowMenu({ member, onEdit, onResend, onAccept, onSuspend, on
         </Button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-64 gap-0.5 p-1.5">
-        <MenuItem icon={Pencil} onClick={run(onEdit)}>
-          Edit details
+        <MenuItem icon={Eye} onClick={run(() => onView(member))}>
+          View details
         </MenuItem>
 
-        {member.status === "invited" && (
-          <>
-            <MenuItem icon={Send} onClick={run(onResend)}>
-              Resend invite
+        {actions.map((id) => {
+          const { label, icon, danger } = STAFF_ACTION_META[id];
+          return (
+            <MenuItem key={id} icon={icon} danger={danger} onClick={run(() => onAction(id, member))}>
+              {label}
             </MenuItem>
-            <MenuItem icon={Play} onClick={run(onAccept)}>
-              Simulate accepting (demo)
-            </MenuItem>
-          </>
-        )}
-        {member.status === "active" && (
-          <MenuItem icon={UserX} onClick={run(onSuspend)}>
-            Suspend access
-          </MenuItem>
-        )}
-        {member.status === "suspended" && (
-          <MenuItem icon={UserCheck} onClick={run(onReactivate)}>
-            Reactivate
-          </MenuItem>
-        )}
-
-        <MenuItem icon={member.status === "invited" ? RotateCcw : Trash2} onClick={run(onRemove)} danger>
-          {member.status === "invited" ? "Cancel invite" : "Remove from team"}
-        </MenuItem>
+          );
+        })}
       </PopoverContent>
     </Popover>
   );

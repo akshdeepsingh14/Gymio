@@ -2,14 +2,17 @@
 // of getDashboard() becomes one API request. The page does not change.
 
 import { addDays, addMonths, diffDays, formatMonth, formatShortDate, startOfMonth, todayISO } from "@/lib/dates";
+import { auditMeta, describeAudit } from "@/lib/auditLog";
 import { getMemberStatus } from "@/lib/membership";
 import { isCounted } from "@/lib/payments";
+import { isOnTeam } from "@/lib/staff";
 import { paymentMethods } from "@/data/mock/seed";
 import { getDb } from "@/services/mockDb";
 
 export const RANGES = [
   { id: "7d", label: "7D", title: "Last 7 days" },
   { id: "30d", label: "30D", title: "Last 30 days" },
+  { id: "mtd", label: "MTD", title: "This month" },
   { id: "13w", label: "13W", title: "Last 13 weeks" },
   { id: "12m", label: "12M", title: "Last 12 months" },
 ];
@@ -23,6 +26,7 @@ function resolveRange(id, today) {
 
   if (id === "7d") start = addDays(today, -6);
   else if (id === "30d") start = addDays(today, -29);
+  else if (id === "mtd") start = startOfMonth(today);
   else if (id === "13w") {
     start = addDays(today, -90);
     granularity = "week";
@@ -61,12 +65,13 @@ function percentChange(current, previous) {
   return Math.round(((current - previous) / previous) * 100);
 }
 
-export async function getDashboard({ range = "30d", gym }) {
-  await wait(450);
+/** `delay` imitates a network request. The hook passes 0 for quiet refreshes after the data changes. */
+export async function getDashboard({ range = "30d", gym, delay = 450, db }) {
+  if (delay) await wait(delay);
 
   const today = todayISO();
   const rules = { graceDays: gym?.graceDays ?? 10, reminderDays: gym?.reminderDays ?? 7 };
-  const { members, accessRequests, announcements, payments: allPayments } = getDb();
+  const { members, plans, staff, photos, auditLog, accessRequests, announcements, payments: allPayments } = db ?? getDb();
   const payments = allPayments.filter(isCounted); // voided payments never count as revenue
   const memberById = Object.fromEntries(members.map((m) => [m.id, m]));
 
@@ -117,6 +122,46 @@ export async function getDashboard({ range = "30d", gym }) {
     })
     .sort((a, b) => b.amount - a.amount);
 
+  // ---- Member status split. Every member lands in exactly one group, so the parts add up to the total. ----
+  const statusBreakdown = [
+    { id: "active", label: "Active", count: count((s) => s.status === "active" && !s.expiringSoon) },
+    { id: "expiring", label: "Expiring soon", count: count((s) => s.expiringSoon) },
+    { id: "grace", label: "In grace period", count: count((s) => s.inGrace) },
+    { id: "expired", label: "Expired", count: count((s) => s.status === "expired" && !s.inGrace) },
+    { id: "suspended", label: "Suspended", count: count((s) => s.status === "suspended") },
+    { id: "inactive", label: "Inactive", count: count((s) => s.status === "inactive") },
+  ];
+
+  // ---- Members per plan ----
+  const planNames = Object.fromEntries(plans.map((plan) => [plan.id, plan.name]));
+  const perPlan = {};
+  for (const member of members) perPlan[member.planId] = (perPlan[member.planId] ?? 0) + 1;
+  const planDistribution = Object.entries(perPlan)
+    .map(([id, total]) => ({ id, label: planNames[id] ?? "Unknown plan", count: total }))
+    .sort((a, b) => b.count - a.count);
+
+  // ---- Latest entries from the audit log: payments, access decisions, staff and data changes ----
+  const currency = gym?.currency ?? "INR";
+  const activity = [...auditLog]
+    .sort((a, b) => b.at.localeCompare(a.at))
+    .slice(0, 6)
+    .map((entry) => ({
+      id: entry.id,
+      at: entry.at,
+      by: entry.by,
+      label: auditMeta(entry.action).label,
+      summary: describeAudit(entry, currency),
+    }));
+
+  // ---- Getting-started checklist ----
+  const setup = [
+    { id: "members", label: "Add your first member", done: members.length > 0, to: "/app/members?new=1" },
+    { id: "payments", label: "Record a payment", done: allPayments.length > 0, to: "/app/payments?new=1" },
+    { id: "profile", label: "Complete your gym profile", done: Boolean(gym?.logo || gym?.description || gym?.address), to: "/app/profile" },
+    { id: "staff", label: "Invite a team member", done: staff.some((member) => isOnTeam(member)), to: "/app/settings/staff" },
+    { id: "updates", label: "Publish a gym update", done: announcements.length > 0 || photos.length > 0, to: "/app/updates" },
+  ];
+
   // ---- Lists ----
   const upcomingRenewals = states
     .filter((s) => (s.status === "active" && s.daysLeft <= 14) || s.inGrace)
@@ -149,13 +194,17 @@ export async function getDashboard({ range = "30d", gym }) {
     series,
     granularity,
     methodBreakdown,
+    statusBreakdown,
+    planDistribution,
+    activity,
+    setup,
     upcomingRenewals,
     recentPayments,
     recentMembers,
     pendingRequests: pending,
     announcements: announcements
-    .filter((post) => post.status !== "archived")
-    .sort((a, b) => b.publishedOn.localeCompare(a.publishedOn))
-    .slice(0, 3),
+      .filter((post) => post.status !== "archived")
+      .sort((a, b) => b.publishedOn.localeCompare(a.publishedOn))
+      .slice(0, 3),
   };
 }

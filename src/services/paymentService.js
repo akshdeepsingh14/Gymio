@@ -1,3 +1,4 @@
+
 // Payment actions for the Payments page. In the backend phase only the bodies
 // of these functions change to API calls, and the server repeats every check.
 //
@@ -9,8 +10,10 @@
 import { getLatestCounted, isCounted } from "@/lib/payments";
 import { appendAudit } from "@/services/auditService";
 import { ServiceError } from "@/services/memberService";
+import { assertCan } from "@/services/actor";
 import { getDb, updateDb } from "@/services/mockDb";
 import { collectPendingPayment, renewMember } from "@/services/renewalService";
+import { actorRef } from "@/lib/attribution";
 
 const wait = (ms = 350) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -19,6 +22,8 @@ const wait = (ms = 350) => new Promise((resolve) => setTimeout(resolve, ms));
  * A member with an unpaid first period gets that period settled. Everyone else is renewed.
  */
 export async function recordPayment(input) {
+  assertCan("payments.record", "Your role cannot record payments.");
+
   const member = getDb().members.find((m) => m.id === input.memberId);
   if (!member) throw new ServiceError("Choose a member.", "memberId");
 
@@ -34,6 +39,8 @@ export async function recordPayment(input) {
  *  - If this was their only payment, the dates stay and the period becomes unpaid again.
  */
 export async function voidPayment(paymentId, input) {
+  const actor = assertCan("payments.adjust", "Your role cannot void payments.");
+
   await wait();
   const db = getDb();
 
@@ -67,7 +74,18 @@ export async function voidPayment(paymentId, input) {
   updateDb((state) => ({
     ...state,
     payments: state.payments.map((p) =>
-      p.id === paymentId ? { ...p, status: "voided", voidedAt: at, voidReason: reason } : p,
+      p.id === paymentId
+        ? {
+            ...p,
+            status: "voided",
+            voidedAt: at,
+            voidReason: reason,
+            adjustmentReason: reason,
+            voidedBy: actorRef(actor),
+            updatedBy: actorRef(actor),
+            updatedAt: at,
+          }
+        : p,
     ),
     members: memberPatch
       ? state.members.map((m) => (m.id === payment.memberId ? { ...m, ...memberPatch } : m))
@@ -94,6 +112,8 @@ export async function voidPayment(paymentId, input) {
 
 /** Fixes a typo in the transaction reference or note. The amount, method and dates cannot be changed. */
 export async function amendPayment(paymentId, input) {
+  assertCan("payments.adjust", "Your role cannot edit payments.");
+
   await wait();
   const payment = getDb().payments.find((p) => p.id === paymentId);
   if (!payment) throw new ServiceError("Payment not found.");
@@ -105,6 +125,10 @@ export async function amendPayment(paymentId, input) {
   };
   const before = { reference: payment.reference ?? "", note: payment.note ?? "" };
 
+  const reason = (input.reason ?? "").trim();
+  if (reason.length < 5) throw new ServiceError("Give a reason of at least 5 characters.", "reason");
+  if (reason.length > 200) throw new ServiceError("Keep the reason under 200 characters.", "reason");
+
   if (before.reference === after.reference && before.note === after.note) {
     throw new ServiceError("Nothing has changed.");
   }
@@ -112,13 +136,18 @@ export async function amendPayment(paymentId, input) {
   const at = new Date().toISOString();
   updateDb((state) => ({
     ...state,
-    payments: state.payments.map((p) => (p.id === paymentId ? { ...p, ...after, amendedAt: at } : p)),
+    payments: state.payments.map((p) =>
+      p.id === paymentId
+        ? { ...p, ...after, amendedAt: at, adjustmentReason: reason, updatedBy: actorRef(actor), updatedAt: at }
+        : p,
+    ),
     auditLog: appendAudit(state, {
       action: "payment.amended",
       paymentId: payment.id,
       receiptNo: payment.receiptNo,
       memberId: payment.memberId,
       amount: payment.amount,
+      reason,
       before,
       after,
     }),

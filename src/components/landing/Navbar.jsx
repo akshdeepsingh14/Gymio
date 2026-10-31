@@ -12,7 +12,9 @@ import {
 } from "@/components/ui/sheet";
 import { Logo } from "@/components/common/Logo";
 import { ThemeToggle } from "@/components/common/ThemeToggle";
+import { SignInMenu } from "@/components/landing/SignInMenu";
 import { navLinks } from "@/data/landingContent";
+import { signInOptions } from "@/data/signInOptions";
 import { scrollToSection } from "@/lib/scroll";
 import { cn } from "@/lib/utils";
 
@@ -186,18 +188,15 @@ export function Navbar({ sectionsReady = false }) {
               <ThemeToggle />
             </div>
 
-            <Link
-              to="/sign-in"
-              className={cn(buttonVariants({ variant: "ghost" }), "hidden h-10 px-4 sm:inline-flex")}
-            >
-              Log in
-            </Link>
+              <div className="hidden sm:block">
+              <SignInMenu />
+            </div>
 
             <Link
               to="/sign-up"
               className={cn(buttonVariants(), "h-10 gap-1.5 px-4")}
             >
-              Start free
+              Get started
               <ArrowUpRight aria-hidden="true" />
             </Link>
 
@@ -282,12 +281,17 @@ export function Navbar({ sectionsReady = false }) {
             <ThemeToggle />
           </div>
 
-          <div className="grid grid-cols-2 gap-3 border-t border-border p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
-            <Button variant="outline" onClick={() => goTo("/sign-in")} className="h-12 text-base">
-              Log in
-            </Button>
-            <Button onClick={() => goTo("/sign-up")} className="h-12 gap-1.5 text-base">
-              Start free
+          <div className="border-t border-border p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
+            <p className="label-mono text-muted-foreground">Sign in as</p>
+            <div className="mt-3 grid grid-cols-3 gap-2">
+              {signInOptions.map((option) => (
+                <Button key={option.key} variant="outline" onClick={() => goTo(option.to)} className="h-12 px-2 text-sm">
+                  {option.shortLabel}
+                </Button>
+              ))}
+            </div>
+            <Button onClick={() => goTo("/sign-up")} className="mt-3 h-12 w-full gap-1.5 text-base">
+              Get started
               <ArrowUpRight aria-hidden="true" />
             </Button>
           </div>

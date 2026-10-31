@@ -7,6 +7,7 @@ import { Panel } from "@/components/common/Panel";
 import { DashboardSkeleton } from "@/components/dashboard/DashboardSkeleton";
 import {
   PendingRequests,
+  RecentActivity,
   RecentAnnouncements,
   RecentMembers,
   RecentPayments,
@@ -15,10 +16,13 @@ import {
 import { GrowthChart } from "@/components/dashboard/GrowthChart";
 import { MetricDefinitions } from "@/components/dashboard/MetricDefinitions";
 import { MethodBreakdown } from "@/components/dashboard/MethodBreakdown";
+import { PlanDistribution } from "@/components/dashboard/PlanDistribution";
 import { QuickActions } from "@/components/dashboard/QuickActions";
 import { RangeTabs } from "@/components/dashboard/RangeTabs";
 import { RevenueChart } from "@/components/dashboard/RevenueChart";
+import { SetupChecklist } from "@/components/dashboard/SetupChecklist";
 import { StatCard } from "@/components/dashboard/StatCard";
+import { StatusBreakdown } from "@/components/dashboard/StatusBreakdown";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
@@ -79,6 +83,8 @@ export default function DashboardPage() {
           aria-busy={loading}
           className={cn("mt-8 space-y-6 transition-opacity duration-200", loading && "opacity-60")}
         >
+          <SetupChecklist steps={data.setup} ownerId={user.id} />
+
           <section aria-label="Key figures" className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
             <StatCard
               label="Total members"
@@ -169,13 +175,33 @@ export default function DashboardPage() {
             <UpcomingRenewals items={data.upcomingRenewals} />
           </div>
 
+          <div className="grid gap-6 lg:grid-cols-2">
+            <Panel title="Member status" description="Every member counted once, as of today">
+              {data.stats.totalMembers === 0 ? (
+                <EmptyState icon={BarChart3} title="No members yet" text="Add a member to see the split." />
+              ) : (
+                <StatusBreakdown data={data.statusBreakdown} />
+              )}
+            </Panel>
+            <Panel title="Members by plan" description="Who is on which membership plan">
+              {data.planDistribution.length === 0 ? (
+                <EmptyState icon={BarChart3} title="No members yet" text="Plans fill in as members are added." />
+              ) : (
+                <PlanDistribution data={data.planDistribution} />
+              )}
+            </Panel>
+          </div>
+
           <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-3">
             <RecentPayments items={data.recentPayments} currency={currency} />
             <PendingRequests items={data.pendingRequests} />
             <RecentMembers items={data.recentMembers} />
           </div>
 
-          <RecentAnnouncements items={data.announcements} />
+          <div className="grid gap-6 lg:grid-cols-2">
+            <RecentActivity items={data.activity} />
+            <RecentAnnouncements items={data.announcements} />
+          </div>
 
           <MetricDefinitions graceDays={graceDays} reminderDays={reminderDays} />
         </div>

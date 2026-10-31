@@ -1,5 +1,5 @@
+
 import { useMemo } from "react";
-import { Link } from "react-router";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
@@ -11,6 +11,7 @@ import {
   TextField,
 } from "@/components/common/FormFields";
 import { LoadingButton } from "@/components/common/LoadingButton";
+import { CreatePlanLink } from "@/components/common/CreatePlanLink";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -28,12 +29,15 @@ import { getPeriodEnd } from "@/lib/membership";
 import { enabledMethodOptions } from "@/lib/payments";
 import { buildNewMemberSchema, memberDetailsSchema } from "@/lib/validation/member";
 import { createMember, ServiceError, updateMember } from "@/services/memberService";
+import { usePermissions } from "@/hooks/usePermissions";
 
 function MemberForm({ member, plans, currency, onDone }) {
   const editing = Boolean(member);
   const activePlans = plans.filter((plan) => plan.status === "active");
 
   const { user } = useAuth();
+  const { can } = usePermissions();
+  const canRecord = can("payments.record");
   const settings = useMemo(() => getGymSettings(user.gym), [user.gym]);
   const schema = useMemo(
     () => (editing ? memberDetailsSchema : buildNewMemberSchema(settings)),
@@ -64,7 +68,7 @@ function MemberForm({ member, plans, currency, onDone }) {
           notes: "",
           planId: (activePlans.find((p) => p.id === "plan_monthly") ?? activePlans[0])?.id ?? "",
           startsOn: todayISO(),
-          paymentMode: "paid",
+          paymentMode: canRecord ? "paid" : "later",
           method: settings.paymentMethods[0],
           reference: "",
         },
@@ -138,9 +142,7 @@ function MemberForm({ member, plans, currency, onDone }) {
               {noPlans ? (
                 <p className="text-sm text-muted-foreground">
                   You have no active plans.{" "}
-                  <Link to="/app/plans" className="font-semibold text-foreground underline underline-offset-4">
-                    Create a plan first.
-                  </Link>
+                  <CreatePlanLink />
                 </p>
               ) : (
                 <>
@@ -164,7 +166,13 @@ function MemberForm({ member, plans, currency, onDone }) {
               )}
             </fieldset>
 
-            {!noPlans && (
+            {!noPlans && !canRecord && (
+              <p className="border-t border-border pt-5 text-sm text-muted-foreground">
+                Your role cannot take payments, so this member is added as unpaid. Someone with payment access can
+                collect it later.
+              </p>
+            )}
+            {!noPlans && canRecord && (
               <fieldset className="space-y-5 border-t border-border pt-5">
                 <legend className="label-mono mb-4">Payment</legend>
                 <SelectField

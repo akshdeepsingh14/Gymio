@@ -8,7 +8,7 @@ import { FormAlert, TextField } from "@/components/common/FormFields";
 import { LoadingButton } from "@/components/common/LoadingButton";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
-import { signInSchema } from "@/lib/validation/auth";
+import { ownerSignInSchema } from "@/lib/validation/auth";
 import { DEMO_CREDENTIALS } from "@/services/authService";
 
 export default function SignInPage() {
@@ -20,8 +20,8 @@ export default function SignInPage() {
     setError,
     formState: { errors, isSubmitting },
   } = useForm({
-    resolver: zodResolver(signInSchema),
-    defaultValues: { email: "", password: "" },
+    resolver: zodResolver(ownerSignInSchema),
+    defaultValues: { email: "", password: "", remember: true },
   });
 
   const onSubmit = async (values) => {
@@ -41,6 +41,7 @@ export default function SignInPage() {
 
   return (
     <AuthLayout
+      eyebrow="Owner portal"
       title="Sign in"
       description="Open your gym dashboard."
       footer={
@@ -49,6 +50,16 @@ export default function SignInPage() {
           <Link to="/sign-up" className="font-semibold text-foreground underline underline-offset-4">
             Create your gym
           </Link>
+          <span className="mt-3 block">
+            Staff or member?{" "}
+            <Link to="/staff/sign-in" className="font-semibold text-foreground underline underline-offset-4">
+              Staff sign in
+            </Link>
+            {" · "}
+            <Link to="/member" className="font-semibold text-foreground underline underline-offset-4">
+              Member sign in
+            </Link>
+          </span>
         </>
       }
     >
@@ -72,7 +83,11 @@ export default function SignInPage() {
           {...register("password")}
         />
 
-        <div className="flex justify-end">
+        <div className="flex items-center justify-between gap-4">
+          <label className="flex min-h-9 cursor-pointer items-center gap-2.5 text-sm">
+            <input type="checkbox" className="size-4 accent-foreground" {...register("remember")} />
+            Keep me signed in
+          </label>
           <Link
             to="/forgot-password"
             className="text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground"

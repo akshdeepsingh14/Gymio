@@ -1,11 +1,12 @@
+
 import { useMemo } from "react";
-import { Link } from "react-router";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 
 import { FormAlert, SelectField, TextField } from "@/components/common/FormFields";
 import { LoadingButton } from "@/components/common/LoadingButton";
+import { CreatePlanLink } from "@/components/common/CreatePlanLink";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -119,9 +120,7 @@ function RenewForm({ member, plans, currency, graceDays, onDone }) {
         {noPlans ? (
           <p className="text-sm text-muted-foreground">
             You have no active plans.{" "}
-            <Link to="/app/plans" className="font-semibold text-foreground underline underline-offset-4">
-              Create or restore a plan first.
-            </Link>
+            <CreatePlanLink />
           </p>
         ) : (
           <>

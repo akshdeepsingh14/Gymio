@@ -1,7 +1,8 @@
 import { Pencil, RefreshCw, Wallet } from "lucide-react";
 
-import { MemberStatusBadge } from "@/components/members/MemberStatusBadge";
 import { CredentialPanel } from "@/components/members/CredentialPanel";
+import { MemberStatusBadge } from "@/components/members/MemberStatusBadge";
+import { ManualEntryTag } from "@/components/payments/ManualEntryTag";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,14 +14,20 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { paymentMethodOptions } from "@/data/options";
+import { useDb } from "@/hooks/useDb";
+import { usePermissions } from "@/hooks/usePermissions";
+import { describeActor } from "@/lib/attribution";
+import { auditMeta, describeAudit } from "@/lib/auditLog";
 import { formatDate, formatShortDate, todayISO } from "@/lib/dates";
 import { formatMoney } from "@/lib/format";
-import { isCounted } from "@/lib/payments";
+import { memberActivity } from "@/lib/memberActivity";
+import { isCounted, MANUAL_ENTRY_NOTE } from "@/lib/payments";
 import { describeDaysLeft } from "@/lib/renewal";
+import { formatDateTime } from "@/lib/security";
 import { cn } from "@/lib/utils";
-import { useDb } from "@/hooks/useDb";
 
 const methodLabels = Object.fromEntries(paymentMethodOptions.map((option) => [option.value, option.label]));
+const ACTIVITY_LIMIT = 10;
 
 function Field({ label, children }) {
   return (
@@ -58,7 +65,12 @@ function periodState(period, today) {
 
 export function MemberDetailSheet({ open, onOpenChange, row, currency, onRenew, onEdit }) {
   const db = useDb();
+  const { can } = usePermissions();
   const today = todayISO();
+
+  const canManage = can("members.manage");
+  const canSeePayments = can("payments.view");
+  const canCollect = can("payments.record");
 
   const planNames = Object.fromEntries(db.plans.map((plan) => [plan.id, plan.name]));
   const payments = row
@@ -66,8 +78,10 @@ export function MemberDetailSheet({ open, onOpenChange, row, currency, onRenew, 
         .filter((p) => p.memberId === row.id)
         .sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id, undefined, { numeric: true }))
     : [];
+  // Membership periods come from payment dates only. Amounts are shown only to people who may see payments.
   const periods = row ? buildPeriods(row, payments.filter(isCounted), planNames) : []; // voided payments cover no period
-  const canRenew = row && row.accessStatus !== "inactive";
+  const activity = row ? memberActivity(db.auditLog, row.id, { includePayments: canSeePayments }) : [];
+  const canRenew = Boolean(row) && row.accessStatus !== "inactive" && canCollect;
   const collecting = row?.paymentStatus === "pending";
 
   return (
@@ -106,8 +120,24 @@ export function MemberDetailSheet({ open, onOpenChange, row, currency, onRenew, 
                   </div>
                 )}
               </section>
-                <CredentialPanel member={row} />
-                
+
+              <section className="space-y-3">
+                <SectionTitle>Record</SectionTitle>
+                <dl className="grid grid-cols-2 gap-4">
+                  <Field label="Added by">{describeActor(row.createdBy, "Not recorded")}</Field>
+                  <Field label="Last edited by">
+                    {row.updatedBy ? describeActor(row.updatedBy) : "Not edited yet"}
+                    {row.updatedAt && (
+                      <span className="block text-xs text-muted-foreground">
+                        {formatDate(row.updatedAt.slice(0, 10))}
+                      </span>
+                    )}
+                  </Field>
+                </dl>
+              </section>
+
+              {canManage && <CredentialPanel member={row} />}
+
               <section className="space-y-3">
                 <SectionTitle>Membership history</SectionTitle>
                 {periods.length === 0 ? (
@@ -135,60 +165,103 @@ export function MemberDetailSheet({ open, onOpenChange, row, currency, onRenew, 
                 )}
               </section>
 
+              {canSeePayments && (
+                <section className="space-y-3">
+                  <SectionTitle>Payment history</SectionTitle>
+                  {payments.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No payments recorded yet.</p>
+                  ) : (
+                    <>
+                      <ul>
+                        {payments.map((payment) => (
+                          <li
+                            key={payment.id}
+                            className="flex items-center justify-between gap-3 border-b border-border py-3 last:border-0"
+                          >
+                            <div className="min-w-0">
+                              <p className="text-sm font-semibold">{formatDate(payment.date)}</p>
+                              <p className="label-mono mt-1 break-words text-muted-foreground">
+                                {[payment.receiptNo, methodLabels[payment.method] ?? payment.method, payment.reference]
+                                  .filter(Boolean)
+                                  .join(" · ")}
+                              </p>
+                              {payment.recordedBy?.name && (
+                                <p className="mt-1 text-xs text-muted-foreground">
+                                  Recorded by {payment.recordedBy.name}
+                                </p>
+                              )}
+                              <ManualEntryTag method={payment.method} className="mt-1" />
+                            </div>
+                            <div className="shrink-0 text-right">
+                              <p
+                                className={cn(
+                                  "font-mono text-sm font-semibold",
+                                  !isCounted(payment) && "text-muted-foreground line-through",
+                                )}
+                              >
+                                {formatMoney(payment.amount, currency)}
+                              </p>
+                              {!isCounted(payment) && <p className="label-mono mt-1 text-destructive">Voided</p>}
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                      <p className="text-xs text-muted-foreground">{MANUAL_ENTRY_NOTE}</p>
+                    </>
+                  )}
+                </section>
+              )}
+
               <section className="space-y-3">
-                <SectionTitle>Payment history</SectionTitle>
-                {payments.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No payments recorded yet.</p>
+                <SectionTitle>Activity</SectionTitle>
+                {activity.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    Nothing logged yet. Changes made from now on appear here.
+                  </p>
                 ) : (
                   <>
                     <ul>
-                      {payments.map((payment) => (
-                        <li
-                          key={payment.id}
-                          className="flex items-center justify-between gap-3 border-b border-border py-3 last:border-0"
-                        >
-                          <div className="min-w-0">
-                            <p className="text-sm font-semibold">{formatDate(payment.date)}</p>
-                            <p className="label-mono mt-1 break-words text-muted-foreground">
-                              {[payment.receiptNo, methodLabels[payment.method] ?? payment.method, payment.reference]
-                                .filter(Boolean)
-                                .join(" · ")}
+                      {activity.slice(0, ACTIVITY_LIMIT).map((entry) => {
+                        const meta = auditMeta(entry.action);
+                        const text = describeAudit(entry, currency);
+                        return (
+                          <li key={entry.id} className="border-b border-border py-3 last:border-0">
+                            <Badge variant={meta.variant}>{meta.label}</Badge>
+                            {text && <p className="mt-2 break-words text-sm">{text}</p>}
+                            <p className="label-mono mt-1 text-muted-foreground">
+                              {formatDateTime(entry.at)} · by {entry.by}
                             </p>
-                          </div>
-                                                    <div className="shrink-0 text-right">
-                            <p
-                              className={cn(
-                                "font-mono text-sm font-semibold",
-                                !isCounted(payment) && "text-muted-foreground line-through",
-                              )}
-                            >
-                              {formatMoney(payment.amount, currency)}
-                            </p>
-                            {!isCounted(payment) && <p className="label-mono mt-1 text-destructive">Voided</p>}
-                          </div>
-                        </li>
-                      ))}
+                          </li>
+                        );
+                      })}
                     </ul>
-                    <p className="text-xs text-muted-foreground">
-                      Payments are recorded by you. Gymio does not verify them with a bank or UPI provider.
-                    </p>
+                    {activity.length > ACTIVITY_LIMIT && (
+                      <p className="text-xs text-muted-foreground">
+                        Showing the latest {ACTIVITY_LIMIT} of {activity.length}. The owner can see everything in the
+                        audit log.
+                      </p>
+                    )}
                   </>
                 )}
               </section>
             </div>
 
-            <SheetFooter className="mt-0 flex-row justify-end gap-2 border-t border-border p-5">
-              <Button variant="outline" onClick={() => onEdit(row)}>
-                <Pencil aria-hidden="true" />
-                Edit
-              </Button>
-              {canRenew && (
-                <Button onClick={() => onRenew(row)}>
-                  {collecting ? <Wallet aria-hidden="true" /> : <RefreshCw aria-hidden="true" />}
-                  {collecting ? "Collect payment" : "Renew"}
-                </Button>
-              )}
-            </SheetFooter>
+            {(canManage || canRenew) && (
+              <SheetFooter className="mt-0 flex-row justify-end gap-2 border-t border-border p-5">
+                {canManage && (
+                  <Button variant="outline" onClick={() => onEdit(row)}>
+                    <Pencil aria-hidden="true" />
+                    Edit
+                  </Button>
+                )}
+                {canRenew && (
+                  <Button onClick={() => onRenew(row)}>
+                    {collecting ? <Wallet aria-hidden="true" /> : <RefreshCw aria-hidden="true" />}
+                    {collecting ? "Collect payment" : "Renew"}
+                  </Button>
+                )}
+              </SheetFooter>
+            )}
           </>
         )}
       </SheetContent>

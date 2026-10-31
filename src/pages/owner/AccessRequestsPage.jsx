@@ -1,8 +1,10 @@
+
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
 import { KeyRound, Search, SearchX } from "lucide-react";
 import { toast } from "sonner";
 
+import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { RejectRequestDialog } from "@/components/access/RejectRequestDialog";
 import { RequestsList } from "@/components/access/RequestsList";
 import { RequestTabs } from "@/components/access/RequestTabs";
@@ -14,10 +16,16 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/useAuth";
 import { useDb } from "@/hooks/useDb";
+import { usePermissions } from "@/hooks/usePermissions";
 import { buildRequestRows, countByStatus, filterRequests } from "@/lib/accessRequests";
 import { todayISO } from "@/lib/dates";
+import { getGymSettings } from "@/lib/gymSettings";
 import { cn } from "@/lib/utils";
-import { approveRequest } from "@/services/accessRequestService";
+import {
+  approveRequest,
+  revokeApproval,
+  sweepExpiredRequests,
+} from "@/services/accessRequestService";
 
 const PAGE_SIZE = 8;
 
@@ -36,12 +44,13 @@ function RequestsSkeleton() {
 const emptyText = {
   pending: "No members are waiting for access right now.",
   approved: "Approved requests will be listed here.",
-  rejected: "Rejected requests will be listed here.",
+  closed: "Cancelled, expired and revoked requests will be listed here.",
   all: "No requests match your search.",
 };
 
 export default function AccessRequestsPage() {
   const { user } = useAuth();
+  const { base } = usePermissions();
   const db = useDb();
 
   const [loading, setLoading] = useState(true);
@@ -50,14 +59,25 @@ export default function AccessRequestsPage() {
   const [page, setPage] = useState(1);
   const [busyId, setBusyId] = useState(null);
   const [rejecting, setRejecting] = useState({ open: false, row: null });
+  const [revoking, setRevoking] = useState({ open: false, row: null });
 
-  const graceDays = user.gym?.graceDays ?? 10;
-  const reminderDays = user.gym?.reminderDays ?? 7;
+  const { graceDays, reminderDays } = getGymSettings(user.gym);
 
   // Short pause so the loading state is visible. The real API will make it natural.
   useEffect(() => {
     const timer = setTimeout(() => setLoading(false), 350);
     return () => clearTimeout(timer);
+  }, []);
+
+  // Periodically expire access requests that have passed their validity window.
+  useEffect(() => {
+    sweepExpiredRequests();
+
+    const timer = setInterval(() => {
+      sweepExpiredRequests();
+    }, 60_000);
+
+    return () => clearInterval(timer);
   }, []);
 
   const rows = useMemo(
@@ -93,6 +113,22 @@ export default function AccessRequestsPage() {
     }
   };
 
+  const handleRevoke = async () => {
+    const row = revoking.row;
+    if (!row) return;
+
+    setBusyId(row.id);
+    try {
+      await revokeApproval(row.id);
+      toast.success(`Access revoked for ${row.name}.`);
+      setRevoking({ open: false, row: null });
+    } catch (error) {
+      toast.error(error.message ?? "Could not revoke this approval.");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   const description =
     counts.pending > 0
       ? `${counts.pending} ${counts.pending === 1 ? "member is" : "members are"} waiting for your approval.`
@@ -113,7 +149,7 @@ export default function AccessRequestsPage() {
           title="No requests yet"
           text="When a member enters your gym username and their access code in the member portal, their request appears here."
           action={
-            <Link to="/app/members" className={cn(buttonVariants({ variant: "outline" }))}>
+            <Link to={`${base}/members`} className={cn(buttonVariants({ variant: "outline" }))}>
               Go to members
             </Link>
           }
@@ -151,6 +187,7 @@ export default function AccessRequestsPage() {
                 busyId={busyId}
                 onApprove={handleApprove}
                 onReject={(row) => setRejecting({ open: true, row })}
+                onRevoke={(row) => setRevoking({ open: true, row })}
               />
               <Pagination
                 page={safePage}
@@ -168,6 +205,21 @@ export default function AccessRequestsPage() {
           </p>
         </div>
       )}
+
+      <ConfirmDialog
+        open={revoking.open}
+        onOpenChange={(open) => setRevoking((current) => ({ ...current, open }))}
+        title="Revoke member access?"
+        description={
+          revoking.row
+            ? `This will revoke ${revoking.row.name}'s approval to open their member area.`
+            : "This will revoke the member's approval to open their member area."
+        }
+        confirmLabel="Revoke access"
+        destructive
+        onConfirm={handleRevoke}
+        loading={busyId === revoking.row?.id}
+      />
 
       <RejectRequestDialog
         open={rejecting.open}

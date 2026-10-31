@@ -10,6 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useDb } from "@/hooks/useDb";
 import { formatDate } from "@/lib/dates";
 import { formatMoney, formatNumber } from "@/lib/format";
+import { isOnTeam } from "@/lib/staff";
 import { isCounted } from "@/lib/payments";
 import { cn } from "@/lib/utils";
 
@@ -21,7 +22,7 @@ export default function BillingSettingsPage() {
   const usage = [
     { label: "Members", value: db.members.length },
     { label: "Membership plans", value: db.plans.length },
-    { label: "Staff accounts", value: db.staff.length },
+    { label: "Staff accounts", value: db.staff.filter((member) => isOnTeam(member)).length },
     { label: "Payments recorded", value: db.payments.filter(isCounted).length },
     { label: "Announcements", value: db.announcements.length },
     { label: "Gym photos", value: db.photos.length },

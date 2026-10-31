@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AuthContext } from "./auth-context";
 import * as authService from "@/services/authService";
+import { logProfileChange, logSettingsChange } from "@/services/settingsAuditService";
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => authService.getSessionUser());
@@ -46,7 +47,9 @@ export function AuthProvider({ children }) {
 
   const updateProfile = useCallback(
     async (data) => {
+      const before = authService.getSessionUser();
       const next = await authService.updateProfile(userId, data);
+      logProfileChange(before, next);
       setUser(next);
       return next;
     },
@@ -55,7 +58,9 @@ export function AuthProvider({ children }) {
 
   const updateGymSettings = useCallback(
     async (patch) => {
+      const before = authService.getSessionUser();
       const next = await authService.updateGymSettings(userId, patch);
+      logSettingsChange(before, next);
       setUser(next);
       return next;
     },

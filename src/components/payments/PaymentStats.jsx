@@ -1,8 +1,25 @@
 import { StatCard } from "@/components/dashboard/StatCard";
 import { formatMoney } from "@/lib/format";
 
-/** Totals for whatever the filters currently show. */
-export function PaymentStats({ summary, currency }) {
+/**
+ * Totals for whatever the filters currently show.
+ * `showMoney` is false for staff without the revenue permission: they still see how many
+ * payments there are, but no amounts.
+ */
+export function PaymentStats({ summary, currency, showMoney = true }) {
+  if (!showMoney) {
+    return (
+      <div className="grid grid-cols-2 gap-3">
+        <StatCard label="Payments" value={summary.count} hint="In the current view" />
+        <StatCard
+          label="Voided"
+          value={summary.voidedCount}
+          hint={summary.voidedCount > 0 ? "Not counted" : "None in this view"}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
       {/* Full width on phones so the two small cards below sit side by side */}

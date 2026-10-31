@@ -92,6 +92,7 @@ export async function downloadReceiptPdf(receipt) {
         ["PERIOD", receiptPeriod(receipt)],
         ["PAID", [formatDate(receipt.paidOn), receipt.methodLabel, receipt.reference].filter(Boolean).join(" · ")],
         receipt.note && ["NOTE", receipt.note],
+        receipt.recordedBy && ["RECORDED BY", receipt.recordedBy],
       ]
     : [
         ["MEMBER", receipt.memberName],
@@ -102,6 +103,7 @@ export async function downloadReceiptPdf(receipt) {
         ["METHOD", receipt.methodLabel],
         receipt.reference && ["REFERENCE", receipt.reference],
         receipt.note && ["NOTE", receipt.note],
+        receipt.recordedBy && ["RECORDED BY", receipt.recordedBy],        
       ];
 
   const valueSize = compact ? 10 : 11;

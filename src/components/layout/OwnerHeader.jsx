@@ -1,6 +1,7 @@
 import { useLocation } from "react-router";
 import { Menu, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 
+import { GlobalSearch } from "@/components/common/GlobalSearch";
 import { NotificationsMenu } from "@/components/layout/NotificationsMenu";
 import { UserMenu } from "@/components/layout/UserMenu";
 import { ThemeToggle } from "@/components/common/ThemeToggle";
@@ -45,6 +46,7 @@ export function OwnerHeader({ collapsed, onToggleSidebar, onOpenMobileNav }) {
       <p className="label-mono truncate">{title}</p>
 
       <div className="ml-auto flex items-center gap-2 sm:gap-3">
+        <GlobalSearch />
         <NotificationsMenu />
         <ThemeToggle />
         <UserMenu />

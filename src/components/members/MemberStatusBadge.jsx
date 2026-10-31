@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 
-export function describeStatus({ status, inGrace, expiringSoon }) {
+function describeStatus({ status, inGrace, expiringSoon }) {
   if (status === "inactive") return { label: "Inactive", dot: "bg-muted-foreground" };
   if (status === "suspended") return { label: "Suspended", dot: "bg-warning" };
   if (status === "expired") return inGrace ? { label: "Grace", dot: "bg-warning" } : { label: "Expired", dot: "bg-destructive" };

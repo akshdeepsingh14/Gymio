@@ -106,7 +106,13 @@ export async function loadPortal(delay = 350) {
     .filter(isShownToMembers)
     .sort((a, b) => b.publishedOn.localeCompare(a.publishedOn))
     .slice(0, 10)
-    .map(({ id, title, excerpt, publishedOn }) => ({ id, title, excerpt, publishedOn }));
+    .map(({ id, title, excerpt, publishedOn, createdBy }) => ({
+      id,
+      title,
+      excerpt,
+      publishedOn,
+      postedBy: createdBy?.name ?? "",
+    }));
 
   const photos = state.photos
     .filter(isShownToMembers)
@@ -121,5 +127,12 @@ export async function loadPortal(delay = 350) {
     payments,
     announcements,
     photos,
+    // The member's own contact details only. Staff notes and the access code are never included.
+    profile: {
+      name: member.name,
+      phone: member.phone ?? "",
+      email: member.email ?? "",
+      locality: member.locality ?? "",
+    },
   };
 }

@@ -22,7 +22,17 @@ export function GymInfoCard({ gymName, info }) {
         {info.address && (
           <p className="flex items-start gap-3">
             <MapPin className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-            <span>{info.address}</span>
+            <span>
+              {info.address}{" "}
+              <a
+                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(info.address)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="whitespace-nowrap font-semibold underline underline-offset-4"
+              >
+                Open in Maps
+              </a>
+            </span>
           </p>
         )}
         {info.phone && (

@@ -1,3 +1,4 @@
+
 // Creating and revoking member access codes. The plain code is returned to the
 // caller once and is never stored. Only its salted hash is saved.
 // In the backend phase this becomes an API call and the server does all of this.
@@ -5,12 +6,15 @@
 import { CREDENTIAL_VALID_DAYS, generateAccessCode, generateSalt, hashCode } from "@/lib/credentials";
 import { addDays, todayISO } from "@/lib/dates";
 import { ServiceError } from "@/services/memberService";
+import { assertCan } from "@/services/actor";
 import { getDb, updateDb } from "@/services/mockDb";
 
 const wait = (ms = 350) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /** Creates a new code. Any earlier code for this member stops working immediately. */
 export async function issueCredential(memberId) {
+  assertCan("members.manage", "Your role cannot manage access codes.");
+
   await wait();
   const member = getDb().members.find((m) => m.id === memberId);
   if (!member) throw new ServiceError("Member not found.");
@@ -40,6 +44,8 @@ export async function issueCredential(memberId) {
 }
 
 export async function revokeCredential(memberId) {
+  assertCan("members.manage", "Your role cannot manage access codes.");
+
   await wait(250);
   const member = getDb().members.find((m) => m.id === memberId);
   if (!member) throw new ServiceError("Member not found.");

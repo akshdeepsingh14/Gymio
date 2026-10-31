@@ -3,6 +3,7 @@ import { Ellipsis, Eye, Pause, Pencil, Play, RefreshCw, UserCheck, UserX, Wallet
 
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { usePermissions } from "@/hooks/usePermissions";
 import { cn } from "@/lib/utils";
 
 function MenuItem({ icon: Icon, children, onClick, danger = false }) {
@@ -23,6 +24,10 @@ function MenuItem({ icon: Icon, children, onClick, danger = false }) {
 
 export function MemberRowMenu({ member, onView, onRenew, onEdit, onDeactivate, onActivate, onSuspend, onLift }) {
   const [open, setOpen] = useState(false);
+  const { can } = usePermissions();
+  const canManage = can("members.manage");
+  const canCollect = can("payments.record");
+
   const run = (action) => () => {
     setOpen(false);
     action(member);
@@ -42,35 +47,39 @@ export function MemberRowMenu({ member, onView, onRenew, onEdit, onDeactivate, o
           View details
         </MenuItem>
 
-        {member.accessStatus !== "inactive" && (
+        {canCollect && member.accessStatus !== "inactive" && (
           <MenuItem icon={collecting ? Wallet : RefreshCw} onClick={run(onRenew)}>
             {collecting ? "Collect payment" : "Renew membership"}
           </MenuItem>
         )}
 
-        <MenuItem icon={Pencil} onClick={run(onEdit)}>
-          Edit details
-        </MenuItem>
+        {canManage && (
+          <>
+            <MenuItem icon={Pencil} onClick={run(onEdit)}>
+              Edit details
+            </MenuItem>
 
-        {member.accessStatus === "suspended" && (
-          <MenuItem icon={Play} onClick={run(onLift)}>
-            Lift suspension
-          </MenuItem>
-        )}
-        {member.accessStatus === "active" && (
-          <MenuItem icon={Pause} onClick={run(onSuspend)}>
-            Suspend access
-          </MenuItem>
-        )}
+            {member.accessStatus === "suspended" && (
+              <MenuItem icon={Play} onClick={run(onLift)}>
+                Lift suspension
+              </MenuItem>
+            )}
+            {member.accessStatus === "active" && (
+              <MenuItem icon={Pause} onClick={run(onSuspend)}>
+                Suspend access
+              </MenuItem>
+            )}
 
-        {member.accessStatus === "inactive" ? (
-          <MenuItem icon={UserCheck} onClick={run(onActivate)}>
-            Reactivate member
-          </MenuItem>
-        ) : (
-          <MenuItem icon={UserX} onClick={run(onDeactivate)} danger>
-            Deactivate member
-          </MenuItem>
+            {member.accessStatus === "inactive" ? (
+              <MenuItem icon={UserCheck} onClick={run(onActivate)}>
+                Reactivate member
+              </MenuItem>
+            ) : (
+              <MenuItem icon={UserX} onClick={run(onDeactivate)} danger>
+                Deactivate member
+              </MenuItem>
+            )}
+          </>
         )}
       </PopoverContent>
     </Popover>

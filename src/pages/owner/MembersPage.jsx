@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { EmptyState } from "@/components/common/EmptyState";
 import { Pagination } from "@/components/common/Pagination";
+import { PermissionGuard } from "@/components/common/PermissionGuard";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { MemberDetailSheet } from "@/components/members/MemberDetailSheet";
 import { MembersList } from "@/components/members/MembersList";
@@ -15,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
 import { useDb } from "@/hooks/useDb";
+import { usePermissions } from "@/hooks/usePermissions";
 import { todayISO } from "@/lib/dates";
 import { getMemberStatus } from "@/lib/membership";
 import { setAccessStatus } from "@/services/memberService";
@@ -30,6 +32,9 @@ const statusOptions = [
   { value: "inactive", label: "Inactive" },
   { value: "suspended", label: "Suspended" },
 ];
+
+// Payment state is money information, so it is only offered to people who may see payments
+const unpaidOption = { value: "unpaid", label: "Unpaid first period" };
 
 const sortOptions = [
   { value: "newest", label: "Newest first" },
@@ -83,10 +88,16 @@ function FilterSelect({ label, value, onChange, options }) {
 
 export default function MembersPage() {
   const { user } = useAuth();
+  const { can } = usePermissions();
   const db = useDb();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const [filters, setFilters] = useState({ query: "", status: "all", plan: "all", sort: "newest" });
+  const [filters, setFilters] = useState({
+    query: "",
+    status: "all",
+    plan: "all",
+    sort: "newest",
+  });
   const [page, setPage] = useState(1);
   const [sheet, setSheet] = useState({ open: false, member: null });
   const [detail, setDetail] = useState({ open: false, id: null }); // live: follows the member's data
@@ -98,17 +109,28 @@ export default function MembersPage() {
   const graceDays = user.gym?.graceDays ?? 10;
   const reminderDays = user.gym?.reminderDays ?? 7;
   const today = todayISO();
+  const statusChoices = can("payments.view") ? [...statusOptions, unpaidOption] : statusOptions;
 
-  // Dashboard quick action links here with ?new=1 to open the add drawer
+  // Links from the dashboard (?new=1) and from the header search (?member=ID) land here
   useEffect(() => {
-    if (searchParams.get("new")) {
-      setSheet({ open: true, member: null });
-      setSearchParams({}, { replace: true });
+    const memberId = searchParams.get("member");
+    const wantsNew = searchParams.get("new");
+    if (!memberId && !wantsNew) return;
+
+    if (wantsNew && can("members.manage")) setSheet({ open: true, member: null });
+
+    if (memberId && db.members.some((member) => member.id === memberId)) {
+      setFilters((current) => ({ ...current, query: memberId, status: "all", plan: "all" }));
+      setPage(1);
+      setDetail({ open: true, id: memberId });
     }
-  }, [searchParams, setSearchParams]);
+
+    setSearchParams({}, { replace: true });
+  }, [searchParams, setSearchParams, can, db.members]);
 
   const rows = useMemo(() => {
     const planNames = Object.fromEntries(db.plans.map((plan) => [plan.id, plan.name]));
+
     return db.members.map((member) => ({
       ...member,
       ...getMemberStatus(member, today, { graceDays, reminderDays }),
@@ -118,15 +140,24 @@ export default function MembersPage() {
 
   const visible = useMemo(() => {
     const query = filters.query.trim().toLowerCase();
+
     return rows
       .filter((row) => {
-        if (query && ![row.name, row.id, row.phone, row.email].some((v) => v && v.toLowerCase().includes(query))) {
+        if (
+          query &&
+          ![row.name, row.id, row.phone, row.email].some(
+            (v) => v && v.toLowerCase().includes(query)
+          )
+        ) {
           return false;
         }
+
         if (filters.plan !== "all" && row.planId !== filters.plan) return false;
         if (filters.status === "all") return true;
+        if (filters.status === "unpaid") return row.paymentStatus === "pending";
         if (filters.status === "expiring") return row.expiringSoon;
         if (filters.status === "grace") return row.inGrace;
+
         return row.status === filters.status;
       })
       .sort(sorters[filters.sort]);
@@ -166,6 +197,7 @@ export default function MembersPage() {
   const runConfirm = async () => {
     const copy = confirmCopy[confirm.action];
     setBusy(true);
+
     try {
       await setAccessStatus(confirm.member.id, copy.status);
       toast.success(`${confirm.member.name} ${copy.done}.`);
@@ -201,10 +233,12 @@ export default function MembersPage() {
             : "Add, search and manage your members."
         }
         actions={
-          <Button size="lg" onClick={openAdd}>
-            <UserPlus aria-hidden="true" />
-            Add member
-          </Button>
+          <PermissionGuard permission="members.manage">
+            <Button size="lg" onClick={openAdd}>
+              <UserPlus aria-hidden="true" />
+              Add member
+            </Button>
+          </PermissionGuard>
         }
       />
 
@@ -213,12 +247,18 @@ export default function MembersPage() {
           className="mt-8"
           icon={Users}
           title="No members yet"
-          text="Add your first member to start tracking memberships, expiry dates and payments."
+          text={
+            can("members.manage")
+              ? "Add your first member to start tracking memberships, expiry dates and payments."
+              : "No members have been added yet."
+          }
           action={
-            <Button onClick={openAdd}>
-              <UserPlus aria-hidden="true" />
-              Add your first member
-            </Button>
+            <PermissionGuard permission="members.manage">
+              <Button onClick={openAdd}>
+                <UserPlus aria-hidden="true" />
+                Add your first member
+              </Button>
+            </PermissionGuard>
           }
         />
       ) : (
@@ -238,14 +278,30 @@ export default function MembersPage() {
                 className="h-10 pl-9"
               />
             </div>
-            <FilterSelect label="Filter by status" value={filters.status} onChange={(v) => setFilter("status", v)} options={statusOptions} />
+
+            <FilterSelect
+              label="Filter by status"
+              value={filters.status}
+              onChange={(v) => setFilter("status", v)}
+              options={statusChoices}
+            />
+
             <FilterSelect
               label="Filter by plan"
               value={filters.plan}
               onChange={(v) => setFilter("plan", v)}
-              options={[{ value: "all", label: "All plans" }, ...db.plans.map((p) => ({ value: p.id, label: p.name }))]}
+              options={[
+                { value: "all", label: "All plans" },
+                ...db.plans.map((p) => ({ value: p.id, label: p.name })),
+              ]}
             />
-            <FilterSelect label="Sort members" value={filters.sort} onChange={(v) => setFilter("sort", v)} options={sortOptions} />
+
+            <FilterSelect
+              label="Sort members"
+              value={filters.sort}
+              onChange={(v) => setFilter("sort", v)}
+              options={sortOptions}
+            />
           </div>
 
           {visible.length === 0 ? (
@@ -264,6 +320,7 @@ export default function MembersPage() {
           ) : (
             <>
               <MembersList rows={pageRows} menuActions={menuActions} />
+
               <Pagination
                 page={safePage}
                 pageSize={PAGE_SIZE}

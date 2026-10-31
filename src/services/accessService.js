@@ -7,9 +7,11 @@
 
 import { getCredentialState, verifyCode } from "@/lib/credentials";
 import { addDays, todayISO } from "@/lib/dates";
+import { getGymSettings } from "@/lib/gymSettings";
 import { getMemberStatus } from "@/lib/membership";
 import { findAccountById, findAccountByUsername } from "@/services/authService";
 import { readGymState, writeGymState } from "@/services/mockDb";
+import { expireStale } from "@/lib/accessRequests";
 
 export const MAX_ATTEMPTS = 5;
 export const LOCK_MINUTES = 5;
@@ -17,6 +19,7 @@ export const LOCK_MINUTES = 5;
 const ATTEMPTS_KEY = "gymio-member-attempts";
 const PENDING_KEY = "gymio-member-pending";
 const SESSION_KEY = "gymio-member-session";
+const NOTICE_KEY = "gymio-member-notice";
 
 // One message for every failure, so nobody can tell a wrong gym from a wrong code
 // from a revoked code from a member who does not exist.
@@ -145,7 +148,7 @@ function findMatch(username, code) {
 }
 
 function getStanding(member, account) {
-  const graceDays = Number(account.gym?.graceDays ?? 10);
+  const { graceDays } = getGymSettings(account.gym);
 
   const info = getMemberStatus(member, todayISO(), { graceDays });
 
@@ -249,6 +252,7 @@ export async function requestAccess({ username, code }) {
 // ---- Following the request ----
 
 /** The member's own request and what the owner decided. Null if there is none. */
+/** The member's own request and what the gym decided. Null if there is none. */
 export function getRequestStatus() {
   const pointer = read(PENDING_KEY, null);
 
@@ -256,11 +260,9 @@ export function getRequestStatus() {
 
   const account = findAccountById(pointer.ownerId);
 
-  const request = account
-    ? readGymState(account).accessRequests.find(
-        (r) => r.id === pointer.requestId
-      )
-    : null;
+  // Close requests the gym left unanswered for too long. It is saved, so every screen agrees.
+  const state = account ? writeGymState(account, (current) => expireStale(current, Date.now())) : null;
+  const request = state ? state.accessRequests.find((r) => r.id === pointer.requestId) : null;
 
   if (!request) {
     remove(PENDING_KEY);
@@ -298,6 +300,18 @@ export async function cancelRequest() {
 export function dismissRequest() {
   remove(PENDING_KEY);
 }
+
+// ---- Why a member was signed out ----
+
+/** Remembers why the gym ended this session, so the sign-in page can explain it. Never stores a code. */
+function leaveNotice(reason, gymName) {
+  write(NOTICE_KEY, { reason, gymName });
+}
+
+/** { reason: "revoked" | "deactivated", gymName } or null. Reading does not clear it. */
+export const getSessionNotice = () => read(NOTICE_KEY, null);
+
+export const clearSessionNotice = () => remove(NOTICE_KEY);
 
 // ---- Member session ----
 
@@ -340,6 +354,15 @@ export function getPortalContext() {
 
   if (!member || member.accessStatus === "inactive") {
     remove(SESSION_KEY);
+    if (member) leaveNotice("deactivated", account.gymName);
+    return null;
+  }
+
+  // The gym withdrew the approval this session came from
+  const approval = state.accessRequests.find((r) => r.id === session.requestId);
+  if (approval && approval.status === "revoked") {
+    remove(SESSION_KEY);
+    leaveNotice("revoked", account.gymName);
     return null;
   }
 

@@ -25,6 +25,7 @@ export function buildReceipt({ payment, gym, gymName, currency }) {
     methodLabel: payment.methodLabel ?? methodLabels[payment.method] ?? payment.method,
     reference: payment.reference ?? "",
     note: payment.note ?? "",
+    recordedBy: payment.recordedBy?.name ?? "",
     voided: !isCounted(payment),
     voidReason: payment.voidReason ?? "",
     // The layout is the gym's current choice. The tax details belong to the payment: they were

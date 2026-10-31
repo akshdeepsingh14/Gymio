@@ -1,3 +1,4 @@
+
 // Renewals and pending-payment collection. In the backend phase these become
 // API calls, and the server repeats every check below. Never trust the browser.
 //
@@ -9,6 +10,8 @@ import { checkPaymentRules, isCounted, MAX_PAYMENT_AMOUNT } from "@/lib/payments
 import { getRenewalPeriod, MAX_RENEWAL_LEAD_DAYS } from "@/lib/renewal";
 import { appendAudit } from "@/services/auditService";
 import { currentSettings, newReceiptFields, nextPaymentNumber, ServiceError } from "@/services/memberService";
+import { actorRef } from "@/lib/attribution";
+import { assertCan, getActor } from "@/services/actor";
 import { getDb, updateDb } from "@/services/mockDb";
 
 const wait = (ms = 450) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -57,7 +60,8 @@ function buildPayment(db, { member, plan, input, details, settings, periodStart,
     date: details.paidOn,
     periodStart,
     periodEnd,
-    status: "recorded", // entered by the owner, not verified with a bank
+    status: "recorded", // entered by hand, not verified with a bank
+    recordedBy: actorRef(getActor()),
     createdAt: new Date().toISOString(),
   };
 }
@@ -77,6 +81,8 @@ const recordedEntry = (payment) => ({
 });
 
 export async function renewMember(memberId, input) {
+  assertCan("payments.record", "Your role cannot record payments, so it cannot renew memberships.");
+
   await wait();
   const db = getDb();
 
@@ -124,7 +130,16 @@ export async function renewMember(memberId, input) {
   updateDb((state) => ({
     ...state,
     members: state.members.map((m) =>
-      m.id === memberId ? { ...m, planId: plan.id, expiresOn: period.end, paymentStatus: "paid" } : m,
+      m.id === memberId
+        ? {
+            ...m,
+            planId: plan.id,
+            expiresOn: period.end,
+            paymentStatus: "paid",
+            updatedBy: actorRef(getActor()),
+            updatedAt: payment.createdAt,
+          }
+        : m,
     ),
     payments: [...state.payments, payment],
     auditLog: appendAudit(state, recordedEntry(payment)),
@@ -135,6 +150,8 @@ export async function renewMember(memberId, input) {
 
 /** Settles an unpaid first period. The membership dates do not change. */
 export async function collectPendingPayment(memberId, input) {
+  assertCan("payments.record", "Your role cannot record payments.");
+
   await wait();
   const db = getDb();
 
@@ -160,7 +177,11 @@ export async function collectPendingPayment(memberId, input) {
 
   updateDb((state) => ({
     ...state,
-    members: state.members.map((m) => (m.id === memberId ? { ...m, paymentStatus: "paid" } : m)),
+    members: state.members.map((m) =>
+      m.id === memberId
+        ? { ...m, paymentStatus: "paid", updatedBy: actorRef(getActor()), updatedAt: payment.createdAt }
+        : m,
+    ),
     payments: [...state.payments, payment],
     auditLog: appendAudit(state, recordedEntry(payment)),
   }));

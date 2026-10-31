@@ -4,11 +4,14 @@ import { Link } from "react-router";
 import { AuditLogCard } from "@/components/settings/AuditLogCard";
 import { DeleteAccountCard } from "@/components/settings/DeleteAccountCard";
 import { ExportCard } from "@/components/settings/ExportCard";
+import { ResetDemoCard } from "@/components/settings/ResetDemoCard";
 import { RetentionCard } from "@/components/settings/RetentionCard";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/hooks/useAuth";
 import { useDb } from "@/hooks/useDb";
 import { getDataPolicy } from "@/lib/dataPrivacy";
+
+const DEMO_OWNER_ID = "owner_demo";
 
 const STORED = [
   "Your gym profile, plans and settings",
@@ -42,7 +45,7 @@ export default function DataSettingsPage() {
           <CardHeader>
             <CardTitle>Privacy information</CardTitle>
             <CardDescription>
-              What Gymio keeps for your gym, in plain words. Only you can see and export it. The full{" "}
+              You see all of it. Staff see only what their role allows, and only you can export or delete it.
               <Link to="/privacy" className={linkClass}>
                 privacy policy
               </Link>{" "}
@@ -74,6 +77,7 @@ export default function DataSettingsPage() {
 
         <RetentionCard policy={policy} members={db.members} />
         <AuditLogCard entries={db.auditLog} currency={currency} />
+        {user.id === DEMO_OWNER_ID && <ResetDemoCard />}
         <DeleteAccountCard request={db.deletionRequest} />
       </div>
     </>

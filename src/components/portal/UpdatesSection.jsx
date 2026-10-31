@@ -14,6 +14,7 @@ export function UpdateItem({ item }) {
       <p className="mt-2 whitespace-pre-line break-words text-sm leading-relaxed text-muted-foreground">
         {item.excerpt}
       </p>
+      {item.postedBy && <p className="label-mono mt-3 text-muted-foreground">Posted by {item.postedBy}</p>}
     </li>
   );
 }

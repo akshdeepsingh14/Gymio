@@ -1,3 +1,4 @@
+
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Dialog } from "radix-ui";
@@ -6,11 +7,16 @@ import { toast } from "sonner";
 import { FormAlert, TextAreaField } from "@/components/common/FormFields";
 import { LoadingButton } from "@/components/common/LoadingButton";
 import { Button } from "@/components/ui/button";
+import { usePermissions } from "@/hooks/usePermissions";
 import { rejectRequestSchema } from "@/lib/validation/access";
 import { rejectRequest } from "@/services/accessRequestService";
 
 function RejectForm({ row, onDone }) {
-  const hasLiveCode = Boolean(row.member?.credential) && row.member.credential.status !== "revoked";
+  const { can } = usePermissions();
+  const hasLiveCode =
+    can("members.manage") &&
+    Boolean(row.member?.credential) &&
+    row.member.credential.status !== "revoked";
 
   const {
     register,
@@ -37,20 +43,25 @@ function RejectForm({ row, onDone }) {
       <FormAlert message={errors.root?.message} />
 
       <p className="rounded-sm border border-border bg-muted/50 p-3 text-sm">
-        <span className="font-semibold">{row.name}</span> · <span className="font-mono">{row.memberId}</span>
+        <span className="font-semibold">{row.name}</span> ·{" "}
+        <span className="font-mono">{row.memberId}</span>
       </p>
 
       <TextAreaField
         label="Note (optional)"
         rows={2}
-        hint="Only you can see this. It is saved in the audit trail."
+        hint="Only the gym team can see this. It is saved in the audit trail."
         error={errors.reason?.message}
         {...register("reason")}
       />
 
       {hasLiveCode && (
         <label className="flex items-start gap-3 text-sm">
-          <input type="checkbox" className="mt-0.5 size-4 shrink-0 accent-foreground" {...register("revokeCode")} />
+          <input
+            type="checkbox"
+            className="mt-0.5 size-4 shrink-0 accent-foreground"
+            {...register("revokeCode")}
+          />
           <span>
             <span className="font-semibold">Also revoke their access code</span>
             <span className="block text-muted-foreground">

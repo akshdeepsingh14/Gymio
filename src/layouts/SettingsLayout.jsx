@@ -6,15 +6,19 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { settingsNav } from "@/data/settingsNav";
 import { cn } from "@/lib/utils";
 
-export default function SettingsLayout() {
+/** The settings frame. The owner gets the gym settings. The staff portal passes its own, shorter list. */
+export default function SettingsLayout({
+  nav = settingsNav,
+  description = "Choose how Gymio looks and works for your gym.",
+}) {
   return (
     <>
-      <PageHeader title="Settings" description="Choose how Gymio looks and works for your gym." />
+      <PageHeader title="Settings" description={description} />
 
       <div className="mt-8 grid gap-8 lg:grid-cols-[14rem_minmax(0,1fr)]">
         <nav aria-label="Settings sections" className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
           <ul className="flex gap-1 lg:flex-col">
-            {settingsNav.map(({ path, label, icon: Icon }) => (
+            {nav.map(({ path, label, icon: Icon }) => (
               <li key={path} className="shrink-0">
                 <NavLink
                   to={path}

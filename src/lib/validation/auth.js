@@ -19,6 +19,9 @@ const password = z
   .regex(/[A-Za-z]/, "Include at least one letter.")
   .regex(/[0-9]/, "Include at least one number.");
 
+/** The password rule, shared with the staff invitation form. */
+export const passwordRule = password;
+
 export const usernameSchema = z
   .string()
   .trim()
@@ -35,6 +38,9 @@ export const signInSchema = z.object({
   email,
   password: z.string().min(1, "Enter your password."),
 });
+
+/** Owner sign-in adds the "keep me signed in" choice. Staff sign-in uses signInSchema as it is. */
+export const ownerSignInSchema = signInSchema.extend({ remember: z.boolean() });
 
 export const signUpSchema = z
   .object({

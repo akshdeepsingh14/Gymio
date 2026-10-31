@@ -1,10 +1,12 @@
 // DEMO ONLY. This fakes a backend using localStorage.
-// It is NOT secure: passwords are stored in plain text in the browser.
+// It is NOT secure: passwords are salted and hashed with plain SHA-256 inside the browser,
+// which anyone with dev tools can attack offline.
 // In the backend phase this whole file is replaced by real API calls
-// (hashed passwords, httpOnly sessions, server-side authorization).
+// (slow password hash, httpOnly sessions, server-side authorization).
 
 import { RESERVED_USERNAMES } from "@/data/options";
 import { parseGymSettingsPatch } from "@/lib/gymSettings";
+import { createPasswordRecord, passwordMatches } from "@/lib/passwordHash";
 import {
   endCurrentSession,
   endOtherSessionsNow,
@@ -21,7 +23,8 @@ export const DEMO_CREDENTIALS = { email: "demo@gymio.app", password: "Demo@1234"
 
 const DEMO_ACCOUNT = {
   id: "owner_demo",
-  ...DEMO_CREDENTIALS,
+  email: DEMO_CREDENTIALS.email,
+  ...createPasswordRecord(DEMO_CREDENTIALS.password),
   ownerName: "Arjun Mehta",
   gymName: "Ironforge Fitness",
   onboardingComplete: true,
@@ -66,32 +69,82 @@ function write(storage, key, value) {
   }
 }
 
+// Accounts saved by an older version kept the password as plain text. Swap it for a salted hash.
+function hashLegacyPassword(account) {
+  if (typeof account.password !== "string") return account;
+  const { password, ...rest } = account;
+  return { ...rest, ...createPasswordRecord(password) };
+}
+
 function loadAccounts() {
   const stored = read(localStorage, ACCOUNTS_KEY, null);
-  if (Array.isArray(stored) && stored.length > 0) return stored;
+  if (Array.isArray(stored) && stored.length > 0) {
+    if (!stored.some((account) => typeof account.password === "string")) return stored;
+    const upgraded = stored.map(hashLegacyPassword);
+    write(localStorage, ACCOUNTS_KEY, upgraded);
+    return upgraded;
+  }
   write(localStorage, ACCOUNTS_KEY, [DEMO_ACCOUNT]);
   return [DEMO_ACCOUNT];
 }
 
-const saveAccounts = (accounts) => write(localStorage, ACCOUNTS_KEY, accounts);
+const STORAGE_FULL =
+  "Your browser has no storage left, so this was not saved. Remove a large image such as a cover photo or a gallery photo, then try again.";
+
+const isQuotaError = (error) =>
+  error?.name === "QuotaExceededError" ||
+  error?.name === "NS_ERROR_DOM_QUOTA_REACHED" ||
+  error?.code === 22 ||
+  error?.code === 1014;
+
+// A full store must never end in a "saved" message. Storage that is merely blocked (private mode)
+// still falls back to keeping the demo in memory, as before.
+function saveAccounts(accounts) {
+  try {
+    localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts));
+  } catch (error) {
+    if (isQuotaError(error)) throw new AuthError(STORAGE_FULL);
+  }
+}
+
+// Where the sign-in is remembered. "Keep me signed in" uses localStorage, which survives closing
+// the browser. Without it the session lives in sessionStorage and ends when the browser is closed.
+const readSessionId = () => read(sessionStorage, SESSION_KEY, null) ?? read(localStorage, SESSION_KEY, null);
+
+function clearSession() {
+  for (const storage of [localStorage, sessionStorage]) {
+    try {
+      storage.removeItem(SESSION_KEY);
+    } catch {
+      // Storage blocked: nothing to remove.
+    }
+  }
+}
+
+function startSession(id, remember) {
+  clearSession();
+  write(remember ? localStorage : sessionStorage, SESSION_KEY, id);
+}
 
 function toPublicUser(account) {
   if (!account) return null;
   const user = { ...account };
   delete user.password;
+  delete user.salt;
+  delete user.hash;
   return user;
 }
 
 export function getSessionUser() {
-  const id = read(localStorage, SESSION_KEY, null);
+  const id = readSessionId();
   if (!id) return null;
   return toPublicUser(loadAccounts().find((a) => a.id === id));
 }
 
-export async function signIn({ email, password }) {
+export async function signIn({ email, password, remember = true }) {
   await wait();
   const known = loadAccounts().find((a) => a.email === normalizeEmail(email));
-  const account = known && known.password === password ? known : null;
+  const account = known && passwordMatches(known, password) ? known : null;
 
   if (!account) {
     // Logged against the real account, so its owner sees the attempt. The message stays generic:
@@ -100,7 +153,7 @@ export async function signIn({ email, password }) {
     throw new AuthError("Email or password is incorrect.");
   }
 
-  write(localStorage, SESSION_KEY, account.id);
+  startSession(account.id, remember);
   recordSignIn(account.id);
   return toPublicUser(account);
 }
@@ -117,7 +170,7 @@ export async function signUp({ gymName, email, password }) {
   const account = {
     id: `owner_${Date.now().toString(36)}`,
     email: cleanEmail,
-    password,
+    ...createPasswordRecord(password),
     ownerName: "",
     gymName: gymName.trim(),
     onboardingComplete: false,
@@ -126,19 +179,15 @@ export async function signUp({ gymName, email, password }) {
   };
 
   saveAccounts([...accounts, account]);
-  write(localStorage, SESSION_KEY, account.id);
+  startSession(account.id, true);
   recordSignIn(account.id);
   return toPublicUser(account);
 }
 
 export async function signOut() {
-  const ownerId = read(localStorage, SESSION_KEY, null);
+  const ownerId = readSessionId();
   if (ownerId) endCurrentSession(ownerId);
-  try {
-    localStorage.removeItem(SESSION_KEY);
-  } catch {
-    // ignore
-  }
+  clearSession();
 }
 
 export async function checkUsername(username, ownerId) {
@@ -180,6 +229,12 @@ export async function updateProfile(ownerId, data) {
   }
 
   const current = accounts[index];
+
+  // The email is what you sign in with and where a password reset goes, so changing it needs the password.
+  // Otherwise anyone at an unlocked computer could take the account over.
+  if (email !== current.email && !passwordMatches(current, data.currentPassword)) {
+    throw new AuthError("Enter your current password to change your email.", "currentPassword");
+  }
   if (username !== current.gym?.username && !(await checkUsername(username, ownerId))) {
     throw new AuthError("That username is already taken.", "username");
   }
@@ -243,14 +298,14 @@ export async function changePassword(ownerId, { currentPassword, newPassword, si
   const index = accounts.findIndex((a) => a.id === ownerId);
   if (index === -1) throw new AuthError("Your session expired. Please sign in again.");
 
-  if (accounts[index].password !== currentPassword) {
+  if (!passwordMatches(accounts[index], currentPassword)) {
     throw new AuthError("Your current password is incorrect.", "currentPassword");
   }
   if (newPassword === currentPassword) {
     throw new AuthError("The new password must be different from the current one.", "newPassword");
   }
 
-  accounts[index] = { ...accounts[index], password: newPassword };
+  accounts[index] = { ...accounts[index], ...createPasswordRecord(newPassword) };
   saveAccounts(accounts);
   recordPasswordChange(ownerId);
   if (signOutOthers) endOtherSessionsNow(ownerId);
@@ -276,7 +331,7 @@ export async function resetPassword(password) {
   const index = accounts.findIndex((a) => a.email === email);
   if (index === -1) throw new AuthError("This reset link has expired. Request a new one.");
 
-  accounts[index] = { ...accounts[index], password };
+  accounts[index] = { ...accounts[index], ...createPasswordRecord(password) };
   saveAccounts(accounts);
   recordPasswordChange(accounts[index].id);
   try {
@@ -286,7 +341,7 @@ export async function resetPassword(password) {
   }
 }
 
-export const getSessionId = () => read(localStorage, SESSION_KEY, null);
+export const getSessionId = () => readSessionId();
 
 // ---- Lookups used by the member portal (no owner session needed) ----
 
@@ -300,6 +355,10 @@ export function findAccountById(id) {
   return toPublicUser(loadAccounts().find((a) => a.id === id));
 }
 
+/** Every owner account, without passwords. Staff sign-in uses it to find which gym an invitation belongs to. */
+export function listAccounts() {
+  return loadAccounts().map(toPublicUser);
+}
 
 // ---- Used by Settings > Data and privacy ----
 
@@ -307,15 +366,11 @@ export function findAccountById(id) {
 export async function verifyPassword(ownerId, password) {
   await wait(400);
   const account = loadAccounts().find((a) => a.id === ownerId);
-  return Boolean(account) && account.password === password;
+  return passwordMatches(account, password);
 }
 
 /** Deletes the account record and ends its session. Only the privacy service calls this. */
 export function removeAccount(ownerId) {
   saveAccounts(loadAccounts().filter((a) => a.id !== ownerId));
-  try {
-    localStorage.removeItem(SESSION_KEY);
-  } catch {
-    // ignore
-  }
+  clearSession();
 }

@@ -49,9 +49,9 @@ export const productFacts = [
     hint: "Members, renewals, payments, receipts, approvals, announcements, analytics and branding.",
   },
   {
-    value: "2",
-    label: "Portals: owner and member",
-    hint: "Owners run the gym from the dashboard. Members get their own private portal.",
+    value: "3",
+    label: "Portals: owner, staff and member",
+    hint: "Owners run the gym, staff work with the access the owner gives them, and members get their own private portal.",
   },
   {
     value: "UPI + Cash",
@@ -309,7 +309,7 @@ export const faqs = [
   {
     question: "Can I use Gymio on my phone?",
     answer:
-      "Yes. Both the owner dashboard and the member portal are fully responsive and work on phones, tablets and laptops.",
+      "Yes. The owner dashboard, the staff portal and the member portal are all responsive"
   },
   {
     question: "Can I export my gym's data?",
@@ -335,8 +335,9 @@ export const footerLinks = [
     title: "Portals",
     links: [
       { label: "Owner sign in", to: "/sign-in" },
+      { label: "Staff sign in", to: "/staff/sign-in" },
+      { label: "Member sign in", to: "/member" },
       { label: "Create gym account", to: "/sign-up" },
-      { label: "Member portal", to: "/member" },
     ],
   },
   {

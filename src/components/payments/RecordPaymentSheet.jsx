@@ -1,11 +1,11 @@
 import { useMemo, useState } from "react";
-import { Link } from "react-router";
+import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { toast } from "sonner";
 
 import { FormAlert, SelectField, TextAreaField, TextField } from "@/components/common/FormFields";
 import { LoadingButton } from "@/components/common/LoadingButton";
+import { CreatePlanLink } from "@/components/common/CreatePlanLink";
 import { MemberPicker } from "@/components/payments/MemberPicker";
 import { Button } from "@/components/ui/button";
 import {
@@ -116,6 +116,7 @@ function RecordForm({ members, plans, currency, onDone }) {
       setValue("amount", "");
       return;
     }
+
     // An unpaid first period is always settled with the plan the member joined on
     const nextPlan =
       picked.paymentStatus === "pending"
@@ -150,9 +151,7 @@ function RecordForm({ members, plans, currency, onDone }) {
         {noPlans && !collecting ? (
           <p className="text-sm text-muted-foreground">
             You have no active plans.{" "}
-            <Link to="/app/plans" className="font-semibold text-foreground underline underline-offset-4">
-              Create or restore a plan first.
-            </Link>
+            <CreatePlanLink />
           </p>
         ) : null}
 

@@ -42,6 +42,7 @@ function Details({ entry, currency }) {
   if (action === "payment.amended") {
     return (
       <>
+        {reason && <p>Reason: {reason}</p>}
         {before.reference !== after.reference && (
           <p>
             Reference: {show(before.reference)} → {show(after.reference)}
@@ -96,7 +97,10 @@ export function PaymentHistorySheet({ open, onOpenChange, payment, currency }) {
                     <div className="space-y-1 text-sm">
                       <Details entry={entry} currency={currency} />
                     </div>
-                    <p className="label-mono text-muted-foreground">By {entry.by}</p>
+                    <p className="label-mono text-muted-foreground">
+                      By {entry.by}
+                      {entry.byRole ? ` · ${entry.byRole}` : ""}
+                    </p>
                   </li>
                 );
               })}

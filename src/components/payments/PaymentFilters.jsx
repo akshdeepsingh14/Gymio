@@ -2,7 +2,8 @@ import { Search } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 import { paymentMethodOptions } from "@/data/options";
-import { DATE_RANGES, isBackwardsRange, SORTS, STATUS_FILTERS } from "@/lib/paymentFilters";
+import { useDb } from "@/hooks/useDb";
+import { DATE_RANGES, isBackwardsRange, recorderOptions, SORTS, STATUS_FILTERS } from "@/lib/paymentFilters";
 
 function FilterSelect({ label, value, onChange, options }) {
   return (
@@ -24,7 +25,11 @@ function FilterSelect({ label, value, onChange, options }) {
 const methodFilterOptions = [{ value: "all", label: "All methods" }, ...paymentMethodOptions];
 
 export function PaymentFilters({ filters, onChange, today }) {
+  const db = useDb();
   const backwards = isBackwardsRange(filters);
+  const recorders = recorderOptions(db.payments);
+  // Only worth showing when there is more than one person to choose between
+  const showRecorders = recorders.length > 2;
 
   return (
     <div className="space-y-3">
@@ -46,6 +51,14 @@ export function PaymentFilters({ filters, onChange, today }) {
         <FilterSelect label="Filter by date" value={filters.range} onChange={(v) => onChange("range", v)} options={DATE_RANGES} />
         <FilterSelect label="Filter by method" value={filters.method} onChange={(v) => onChange("method", v)} options={methodFilterOptions} />
         <FilterSelect label="Filter by status" value={filters.status} onChange={(v) => onChange("status", v)} options={STATUS_FILTERS} />
+        {showRecorders && (
+          <FilterSelect
+            label="Filter by who recorded it"
+            value={filters.recordedBy}
+            onChange={(v) => onChange("recordedBy", v)}
+            options={recorders}
+          />
+        )}
         <FilterSelect label="Sort payments" value={filters.sort} onChange={(v) => onChange("sort", v)} options={SORTS} />
       </div>
 

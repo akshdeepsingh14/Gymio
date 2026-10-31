@@ -25,7 +25,10 @@ export function PhotoGrid({ photos, busy, onEdit, onDelete }) {
           <div className="space-y-3 p-3">
             <div className="min-w-0">
               <p className="break-words text-sm font-semibold">{photo.caption || "No caption"}</p>
-              <p className="label-mono mt-1 text-muted-foreground">Added {formatDate(photo.addedOn)}</p>
+              <p className="label-mono mt-1 text-muted-foreground">
+                Added {formatDate(photo.addedOn)}
+                {photo.createdBy?.name ? ` · ${photo.createdBy.name}` : ""}
+              </p>
             </div>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" onClick={() => onEdit(photo)} disabled={busy}>

@@ -33,8 +33,30 @@ export const DEFAULT_FILTERS = {
   to: "",
   method: "all",
   status: "all",
+  recordedBy: "all",
   sort: "newest",
 };
+
+/**
+ * Who has recorded payments, as dropdown options. "Not recorded" covers sample payments that
+ * were added before staff accounts existed.
+ */
+export function recorderOptions(payments) {
+  const people = new Map();
+  let anonymous = false;
+
+  for (const payment of payments) {
+    if (payment.recordedBy?.id) people.set(payment.recordedBy.id, payment.recordedBy);
+    else anonymous = true;
+  }
+
+  const options = [...people.values()]
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map((person) => ({ value: person.id, label: person.role ? `${person.name} · ${person.role}` : person.name }));
+  if (anonymous) options.push({ value: "none", label: "Not recorded" });
+
+  return [{ value: "all", label: "Anyone" }, ...options];
+}
 
 const idNumber = (payment) => Number(payment.id.replace("pay_", "")) || 0;
 
@@ -67,10 +89,14 @@ export function filterPayments(rows, filters, today) {
     if (filters.method !== "all" && row.method !== filters.method) return false;
     if (filters.status === "voided" && isCounted(row)) return false;
     if (filters.status === "recorded" && !isCounted(row)) return false;
+    if (filters.recordedBy === "none" && row.recordedBy?.id) return false;
+    if (filters.recordedBy !== "all" && filters.recordedBy !== "none" && row.recordedBy?.id !== filters.recordedBy) {
+      return false;
+    }
     if (from && row.date < from) return false;
     if (to && row.date > to) return false;
     if (query) {
-      const haystack = [row.receiptNo, row.memberName, row.memberId, row.reference, row.note];
+      const haystack = [row.receiptNo, row.memberName, row.memberId, row.reference, row.note, row.recordedBy?.name];
       if (!haystack.some((value) => value && value.toLowerCase().includes(query))) return false;
     }
     return true;

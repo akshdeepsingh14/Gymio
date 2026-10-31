@@ -1,4 +1,4 @@
-import { CalendarCheck, KeyRound, Megaphone, ReceiptText, UserPlus } from "lucide-react";
+import { CalendarCheck, History, KeyRound, Megaphone, ReceiptText, UserPlus } from "lucide-react";
 
 import { EmptyState } from "@/components/common/EmptyState";
 import { Panel, PanelLink } from "@/components/common/Panel";
@@ -128,12 +128,36 @@ export function RecentAnnouncements({ items }) {
       {items.length === 0 ? (
         <EmptyState icon={Megaphone} title="Nothing published" text="Announcements you publish appear here." />
       ) : (
-        <ul className="grid gap-6 md:grid-cols-3">
+        <ul className="grid gap-6">
           {items.map((post) => (
             <li key={post.id} className="border-l-2 border-foreground pl-4">
               <p className="label-mono text-muted-foreground">{formatDate(post.publishedOn)}</p>
               <p className="mt-2 font-semibold">{post.title}</p>
               <p className="mt-1 text-sm text-muted-foreground">{post.excerpt}</p>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Panel>
+  );
+}
+
+
+export function RecentActivity({ items }) {
+  return (
+    <Panel title="Recent activity" description="Payments, access decisions and team changes">
+      {items.length === 0 ? (
+        <EmptyState icon={History} title="No activity yet" text="Payments and changes will be listed here." />
+      ) : (
+        <ul>
+          {items.map((entry) => (
+            <li key={entry.id} className={rowClass}>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold">{entry.label}</p>
+                <p className="mt-1 text-sm text-muted-foreground">{entry.summary}</p>
+                <p className="label-mono mt-1 text-muted-foreground">By {entry.by}</p>
+              </div>
+              <p className="shrink-0 self-start text-xs text-muted-foreground">{timeAgo(entry.at)}</p>
             </li>
           ))}
         </ul>

@@ -4,6 +4,7 @@ import { Ban, Clock, TriangleAlert } from "lucide-react";
 
 import { GallerySection } from "@/components/portal/GallerySection";
 import { GymInfoCard } from "@/components/portal/GymInfoCard";
+import { MemberProfileCard } from "@/components/portal/MemberProfileCard";
 import { MembershipCard } from "@/components/portal/MembershipCard";
 import { PaymentsSection } from "@/components/portal/PaymentsSection";
 import { PortalHeader } from "@/components/portal/PortalHeader";
@@ -61,6 +62,15 @@ function Notices({ data }) {
           keep your access. {renewalHelp(data.gymInfo)}
         </PortalNotice>
       )}
+      {data.access === "full" && data.standing.expiringSoon && (
+        <PortalNotice icon={Clock} tone="warning" title="Your membership ends soon">
+          {data.daysLeft === 0
+            ? "It ends today."
+            : `It ends in ${data.daysLeft} ${data.daysLeft === 1 ? "day" : "days"}, on ${formatDate(data.expiresOn)}.`}{" "}
+          {renewalHelp(data.gymInfo)}
+        </PortalNotice>
+      )}
+
       {data.access === "grace-limited" && (
         <PortalNotice icon={TriangleAlert} tone="warning" title="Your membership has expired">
           You are in the grace period, and the gym limits this page until you renew. Renew by{" "}
@@ -132,6 +142,7 @@ export default function MemberHomePage() {
                 />
                 <UpdatesSection items={data.announcements} />
                 <GallerySection photos={data.photos} />
+                <MemberProfileCard profile={data.profile} />
               </>
             )}
 
